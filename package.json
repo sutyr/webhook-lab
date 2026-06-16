@@ -1,0 +1,55 @@
+{
+  "name": "@sutyr/webhook-lab",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.30.3",
+  "license": "Apache-2.0",
+  "author": "Sutyr Inc. <legal@sutyr.com> (https://sutyr.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sutyr/webhook-lab.git"
+  },
+  "homepage": "https://lab.sutyr.com",
+  "type": "module",
+  "keywords": [
+    "stripe",
+    "webhook",
+    "testing",
+    "events",
+    "billing",
+    "payment",
+    "mock",
+    "sandbox",
+    "typescript"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "pnpm -r test && vitest run --config vitest.integration.config.ts",
+    "test:unit": "pnpm -r test:unit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:events": "pnpm --filter @webhook-lab/events test",
+    "test:signatures": "pnpm --filter @webhook-lab/signatures test",
+    "build": "pnpm -r build",
+    "build:pkg": "tsup"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "stripe": "^22.1.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.9"
+  }
+}

@@ -1,0 +1,18 @@
+Webhook Lab
+Copyright 2026 Sutyr Inc.
+
+Licensed under the Apache License, Version 2.0.
+
+Event schemas in this project are derived from Stripe's publicly
+available API documentation and OpenAPI specification.
+
+Stripe API documentation: https://docs.stripe.com/api
+Stripe OpenAPI specification: https://github.com/stripe/openapi
+
+This product is not developed, maintained, endorsed, or sponsored by
+Stripe, Inc. Stripe, the Stripe logo, and related marks are trademarks
+of Stripe, Inc.
+
+"Sutyr" and the Sutyr logo are trademarks of Sutyr Inc. The Apache
+License, Version 2.0 does not grant permission to use Sutyr's
+trademarks, trade names, logos, or brand identity.

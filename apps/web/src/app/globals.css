@@ -1,0 +1,242 @@
+/* Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0 */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-surface-page: #FAF8F4;
+    --color-surface-card: #F9F8F6;
+    --color-surface-input: #F4F2EE;
+    --color-surface-elevated: #F9F8F6;
+    --color-surface-hover: #F0EDE6;
+    --color-border: #EEEBE4;
+    --color-border-medium: #E5E1D8;
+    --color-border-strong: #D8D3C8;
+    --color-text-primary: #16120C;
+    --color-text-secondary: #4A4237;
+    --color-text-tertiary: #7A7062;
+    --color-text-muted: #A89E90;
+    --color-copper: #C8862C;
+    --color-copper-body: #B8782A;
+    --color-mark-dt: #16120C;
+    --color-copper-glass: rgba(200, 134, 44, 0.07);
+
+    /* State colors — absolute meanings, identical both themes */
+    --color-state-success: #5BB870;
+    --color-state-error: #E05540;
+    --color-state-warning: #C08820;
+    --color-state-info: #6A9BC4;
+  }
+
+  .dark {
+    --color-surface-page: #080604;
+    --color-surface-card: #0F0C08;
+    --color-surface-input: #161209;
+    --color-surface-elevated: #1E170D;
+    --color-surface-hover: #261E12;
+    --color-border: rgba(240, 235, 224, 0.10);
+    --color-border-medium: rgba(240, 235, 224, 0.15);
+    --color-border-strong: rgba(240, 235, 224, 0.22);
+    --color-text-primary: #FAF6F0;
+    --color-text-secondary: #EDE8DF;
+    --color-text-tertiary: #CFC8BA;
+    --color-text-muted: #9E9588;
+    --color-copper: #D49A3A;
+    --color-copper-body: #D49A3A;
+    --color-mark-dt: #E8EEF7;
+    --color-copper-glass: rgba(200, 134, 44, 0.07);
+  }
+
+  html {
+    font-family: var(--font-dm-sans), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: var(--color-surface-page);
+    color: var(--color-text-primary);
+    text-rendering: optimizeLegibility;
+  }
+
+  *:focus-visible {
+    outline: 2px solid var(--color-copper);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(200, 134, 44, 0.12);
+  }
+}
+
+/* ─── Iteration 4: Micro-animations ─────────────────────────────────────── */
+
+/* #1 Payload shimmer */
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+.shimmer-line {
+  display: inline-block;
+  height: 0.75em;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--color-surface-input) 25%, var(--color-surface-elevated) 50%, var(--color-surface-input) 75%);
+  background-size: 400px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* #1 Payload crossfade */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in { animation: fadeIn 150ms ease-out; }
+
+/* #2 Fire button ripple */
+@keyframes ripple {
+  0% { width: 0; height: 0; opacity: 0.4; transform: translate(-50%, -50%); }
+  100% { width: 300px; height: 300px; opacity: 0; transform: translate(-50%, -50%); }
+}
+.animate-ripple { animation: ripple 500ms ease-out forwards; }
+
+/* #3 Response slide-up */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slideUp 200ms ease-out; }
+
+/* #5 Category icon scale settle */
+@keyframes scaleSettle {
+  0% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.animate-scale-settle { animation: scaleSettle 200ms ease-out; }
+
+/* #8 Theme toggle rotation */
+@keyframes rotateIn {
+  from { opacity: 0; transform: rotate(-90deg) scale(0.8); }
+  to { opacity: 1; transform: rotate(0deg) scale(1); }
+}
+.animate-rotate-in { animation: rotateIn 200ms ease-out; }
+
+/* #9 Copy check bounce */
+@keyframes checkBounce {
+  0% { transform: scale(0.6); opacity: 0; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-check-bounce { animation: checkBounce 300ms ease-out; }
+
+/* #11 Breadcrumb segment entry */
+@keyframes breadcrumbIn {
+  from { opacity: 0; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-breadcrumb-in { animation: breadcrumbIn 150ms ease-out; }
+
+/* #13 Panel entry stagger */
+@keyframes panelEnterLeft {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes panelEnterUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes panelEnterRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* #13 Noscript safety net — panels visible after 1s even without JS */
+@keyframes forceVisible {
+  to { opacity: 1; }
+}
+.panel-animated {
+  animation: forceVisible 0s 1s forwards;
+}
+
+/* #12 Input copper glow */
+@layer components {
+  .input-copper-focus {
+    transition: box-shadow 150ms ease-out, border-color 150ms ease-out;
+  }
+  .input-copper-focus:focus {
+    border-color: var(--color-copper-body);
+    box-shadow: 0 0 0 3px rgba(200, 134, 44, 0.12);
+    outline: none;
+  }
+}
+
+/* ─── Phase B: Animation breadth ────────────────────────────────────────── */
+
+/* 4.1 Scroll shadows — gradient indicators for scrollable overflow */
+.scroll-shadow {
+  background:
+    linear-gradient(var(--color-surface-card) 30%, transparent),
+    linear-gradient(transparent, var(--color-surface-card) 70%) 0 100%,
+    radial-gradient(farthest-side at 50% 0, rgba(0,0,0,0.08), transparent),
+    radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,0.08), transparent) 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 40px, 100% 40px, 100% 8px, 100% 8px;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* 4.7 Empty state exit */
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.animate-fade-out { animation: fadeOut 150ms ease-out forwards; }
+
+/* 4.8 Health summary slide-down */
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-down { animation: slideDown 200ms ease-out; }
+
+/* WCAG 2.1: Respect user motion preferences */
+/* Scrollbar — themed for both surfaces */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-medium) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border-medium);
+  border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* iOS Safari zooms into any focused input rendered below 16px. Force 16px on
+   mobile so focusing a field never triggers a viewport zoom. Desktop keeps the
+   tool-grade compact sizes via the explicit text-* classes on each input. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

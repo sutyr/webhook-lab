@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+*.tsbuildinfo
+
+# Environment variables
+.env
+.env.local
+.env*.local
+
+# Cache
+.turbo/
+.eslintcache
+.vercel/
+coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Local config / private working directories
+.claude/
+_private/

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "paths": {
+      "@webhook-lab/events": ["./packages/events/src/index.ts"],
+      "@webhook-lab/signatures": ["./packages/signatures/src/index.ts"]
+    }
+  },
+  "include": ["src", "packages/events/src", "packages/signatures/src"]
+}
