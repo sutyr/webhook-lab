@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["iad1"],
+  "buildCommand": "pnpm --filter @webhook-lab/events build && pnpm --filter @webhook-lab/signatures build && next build",
   "functions": {
     "app/api/**/*": {
       "maxDuration": 10
