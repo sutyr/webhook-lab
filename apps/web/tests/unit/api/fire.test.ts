@@ -25,6 +25,22 @@ describe('POST /api/fire', () => {
     global.fetch = originalFetch;
   });
 
+  // ─── Kill switch ────────────────────────────────────────────────────────────
+
+  it('returns 503 FIRING_DISABLED when WEBHOOK_LAB_DISABLE_FIRE=true', async () => {
+    vi.stubEnv('WEBHOOK_LAB_DISABLE_FIRE', 'true');
+    const request = makeRequest({
+      eventType: 'payment_intent.succeeded',
+      targetUrl: 'https://example.com/webhook',
+    });
+    const response = await POST(request);
+    const data = await response.json();
+    expect(response.status).toBe(503);
+    expect(data.error.code).toBe('FIRING_DISABLED');
+    expect(global.fetch).not.toHaveBeenCalled();
+    vi.unstubAllEnvs();
+  });
+
   // ─── URL validation ─────────────────────────────────────────────────────────
 
   it('returns 400 when targetUrl is missing', async () => {

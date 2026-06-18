@@ -39,6 +39,12 @@ export const metadata: Metadata = {
     type: 'website',
     siteName: 'Webhook Lab by Sutyr',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Webhook Lab',
+    description:
+      'Generate and test Stripe webhook events with proper signatures. No Stripe account required.',
+  },
 };
 
 export const viewport: Viewport = {

@@ -6,7 +6,7 @@
 
 Open-source Stripe webhook testing. Generate events, sign them, fire them at your endpoint. Zero auth, zero Stripe account.
 
-[![Tests](https://img.shields.io/badge/tests-755-brightgreen)](https://github.com/sutyr/webhook-lab)
+[![Tests](https://img.shields.io/badge/tests-756-brightgreen)](https://github.com/sutyr/webhook-lab)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 [![Dependencies](https://img.shields.io/badge/library%20deps-0-brightgreen)](packages/events/package.json)
@@ -60,7 +60,7 @@ await fetch('https://your-server.com/webhook', {
 - **Replay** — re-fire the same event to test handler idempotency
 - **Response history** — compare responses across fires, restore previous configurations
 - **Coverage tracking** — see which event types you've tested this session
-- **755 tests** — schema validation, SSRF protection, signature compatibility, entity correlation
+- **756 tests** — schema validation, SSRF protection, signature compatibility, entity correlation
 - **Zero runtime dependencies** in library packages
 - **Zero telemetry** — no analytics, no tracking, no cookies beyond localStorage for preferences
 
@@ -71,7 +71,7 @@ Every generated event is validated against Stripe's API documentation. The test 
 - **370 event tests** — field names, types, ID prefixes (`pi_`, `ch_`, `in_`, `sub_`, `cus_`, `dp_`), enum values, nested object shapes
 - **115 integration tests** — structural contracts, entity ID correlation across scenario steps, sign-then-verify round-trips for all 18 event types, end-to-end verification against Stripe's official SDK
 - **38 signature tests** — Stripe compatibility vectors, boundary tolerance (300s), malformed header rejection, unicode payload round-trips
-- **232 web tests** — API routes, SSRF protection (IPv4, IPv6, IPv4-mapped IPv6, redirect-follow), rate limiting, input validation, export formatting
+- **233 web tests** — API routes, SSRF protection (IPv4, IPv6, IPv4-mapped IPv6, redirect-follow), rate limiting, input validation, export formatting
 
 The decline code distinction is tested at three layers. `payment_intent.payment_failed` with `insufficient_funds` produces `decline_code: 'insufficient_funds'` on `last_payment_error`. With `expired_card`, the field `decline_code` is absent — not null, absent. This matches Stripe's actual behavior and catches a common handler bug.
 

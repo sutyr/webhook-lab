@@ -29,3 +29,4 @@ pnpm-debug.log*
 # Local config / private working directories
 .claude/
 _private/
+.vercel

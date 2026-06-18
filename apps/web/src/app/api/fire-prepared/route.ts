@@ -42,6 +42,15 @@ async function readResponseBody(res: Response): Promise<{ body: string; truncate
 }
 
 export async function POST(request: Request) {
+  // ── Kill switch ───────────────────────────────────────────────────────────
+  // Operator-controlled instant off-switch for outbound firing.
+  if (process.env.WEBHOOK_LAB_DISABLE_FIRE === 'true') {
+    return Response.json(
+      { error: { code: 'FIRING_DISABLED', message: 'Firing is temporarily disabled on this instance.' } },
+      { status: 503 },
+    );
+  }
+
   // ── Rate limit ──────────────────────────────────────────────────────────────
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
   const rateLimit = checkRateLimit(ip);
