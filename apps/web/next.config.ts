@@ -38,6 +38,11 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // The CBOM is extensionless JSON (CycloneDX); set the type explicitly.
+        source: '/.well-known/cbom',
+        headers: [{ key: 'Content-Type', value: 'application/json; charset=utf-8' }],
+      },
+      {
         // Keep every non-production host (preview deploys, *.vercel.app staging)
         // out of search indexes. Only the canonical production domain is indexable.
         source: '/(.*)',
