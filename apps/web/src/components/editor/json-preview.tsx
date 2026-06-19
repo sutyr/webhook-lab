@@ -272,27 +272,17 @@ export function JsonPreview() {
         <CopyButton text={editedPayload ?? json} />
       </div>
 
-      {/* Always show first COLLAPSED_LINES */}
+      {/* Single horizontal-scroll container so every line scrolls together.
+          (Splitting collapsed/expanded into two overflow-x-auto boxes created
+          two independent horizontal scrollbars — the first 10 lines stayed put
+          while the rest scrolled.) */}
       <div className="overflow-x-auto pr-16 font-mono text-[0.75rem]">
-        {syntaxHighlight(lines.slice(0, COLLAPSED_LINES).join('\n'))}
+        {syntaxHighlight(
+          needsCollapse && !expanded
+            ? lines.slice(0, COLLAPSED_LINES).join('\n')
+            : json,
+        )}
       </div>
-
-      {/* Expandable overflow section */}
-      {needsCollapse && (
-        <div
-          className="grid transition-[grid-template-rows] duration-[250ms] ease-out"
-          style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
-        >
-          <div className="overflow-hidden">
-            <div className="overflow-x-auto pr-16 font-mono text-[0.75rem]">
-              {syntaxHighlight(
-                lines.slice(COLLAPSED_LINES).join('\n'),
-                COLLAPSED_LINES + 1,
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="mt-2 flex gap-3">
         {needsCollapse && (
