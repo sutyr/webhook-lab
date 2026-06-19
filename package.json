@@ -1,8 +1,10 @@
 {
   "name": "@sutyr/webhook-lab",
   "version": "0.1.0",
-  "private": true,
   "packageManager": "pnpm@10.30.3",
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "Apache-2.0",
   "author": "Sutyr Inc. <legal@sutyr.com> (https://sutyr.com)",
   "repository": {
