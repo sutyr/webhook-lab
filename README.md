@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/screenshot.png" alt="Webhook Lab — Stripe webhook testing tool" width="900" />
+  <img src="docs/screenshot.png" alt="Webhook Lab: Stripe webhook testing tool" width="900" />
 </div>
 
 # Webhook Lab
@@ -19,7 +19,7 @@ Webhook Lab generates structurally correct Stripe webhook events, signs them wit
 
 ### Browser
 
-Visit [lab.sutyr.com](https://lab.sutyr.com) — no installation, no signup, no Stripe account required.
+Visit [lab.sutyr.com](https://lab.sutyr.com). No installation, no signup, no Stripe account required.
 
 ### npm
 
@@ -52,28 +52,28 @@ await fetch('https://your-server.com/webhook', {
 
 - **18 event types** across payments, billing, subscriptions, checkout, customers, and disputes
 - **5 scenario presets** with correlated entity IDs across multi-step billing lifecycles
-- **Stripe-compatible signing** — HMAC-SHA256 matching Stripe's `constructEvent()` algorithm
-- **Customizable** — entity IDs, metadata, card details, decline codes, livemode, API version
-- **Decline code accuracy** — correct `code` vs `decline_code` distinction at every layer
-- **Shareable URLs** — copy a link, teammate sees the exact same configured event
-- **Export** — copy as cURL, TypeScript, or Python
-- **Replay** — re-fire the same event to test handler idempotency
-- **Response history** — compare responses across fires, restore previous configurations
-- **Coverage tracking** — see which event types you've tested this session
-- **756 tests** — schema validation, SSRF protection, signature compatibility, entity correlation
+- **Stripe-compatible signing**: HMAC-SHA256 matching Stripe's `constructEvent()` algorithm
+- **Customizable**: entity IDs, metadata, card details, decline codes, livemode, API version
+- **Decline code accuracy**: correct `code` vs `decline_code` distinction at every layer
+- **Shareable URLs**: copy a link, teammate sees the exact same configured event
+- **Export**: copy as cURL, TypeScript, or Python
+- **Replay**: re-fire the same event to test handler idempotency
+- **Response history**: compare responses across fires, restore previous configurations
+- **Coverage tracking**: see which event types you've tested this session
+- **756 tests**: schema validation, SSRF protection, signature compatibility, entity correlation
 - **Zero runtime dependencies** in library packages
-- **Zero telemetry** — no analytics, no tracking, no cookies beyond localStorage for preferences
+- **Zero telemetry**: no analytics, no tracking, no cookies beyond localStorage for preferences
 
 ## Schema Accuracy
 
 Every generated event is validated against Stripe's API documentation. The test suite includes:
 
-- **370 event tests** — field names, types, ID prefixes (`pi_`, `ch_`, `in_`, `sub_`, `cus_`, `dp_`), enum values, nested object shapes
-- **115 integration tests** — structural contracts, entity ID correlation across scenario steps, sign-then-verify round-trips for all 18 event types, end-to-end verification against Stripe's official SDK
-- **38 signature tests** — Stripe compatibility vectors, boundary tolerance (300s), malformed header rejection, unicode payload round-trips
-- **233 web tests** — API routes, SSRF protection (IPv4, IPv6, IPv4-mapped IPv6, redirect-follow), rate limiting, input validation, export formatting
+- **370 event tests**: field names, types, ID prefixes (`pi_`, `ch_`, `in_`, `sub_`, `cus_`, `dp_`), enum values, nested object shapes
+- **115 integration tests**: structural contracts, entity ID correlation across scenario steps, sign-then-verify round-trips for all 18 event types, end-to-end verification against Stripe's official SDK
+- **38 signature tests**: Stripe compatibility vectors, boundary tolerance (300s), malformed header rejection, unicode payload round-trips
+- **233 web tests**: API routes, SSRF protection (IPv4, IPv6, IPv4-mapped IPv6, redirect-follow), rate limiting, input validation, export formatting
 
-The decline code distinction is tested at three layers. `payment_intent.payment_failed` with `insufficient_funds` produces `decline_code: 'insufficient_funds'` on `last_payment_error`. With `expired_card`, the field `decline_code` is absent — not null, absent. This matches Stripe's actual behavior and catches a common handler bug.
+The decline code distinction is tested at three layers. `payment_intent.payment_failed` with `insufficient_funds` produces `decline_code: 'insufficient_funds'` on `last_payment_error`. With `expired_card`, the field `decline_code` is absent. Not null, absent. This matches Stripe's actual behavior and catches a common handler bug.
 
 ## Events
 
@@ -108,7 +108,7 @@ The decline code distinction is tested at three layers. `payment_intent.payment_
 | Dispute Lifecycle | 4 | Charge disputed, evidence submitted, dispute resolved |
 | Refund Flow | 2 | Successful charge followed by full refund |
 
-All scenarios use correlated entity IDs — the same customer, subscription, invoice, and charge IDs appear across every step in the sequence.
+All scenarios use correlated entity IDs: the same customer, subscription, invoice, and charge IDs appear across every step in the sequence.
 
 ## Self-Hosting
 
@@ -125,7 +125,7 @@ Open `http://localhost:3000`. Set `WEBHOOK_LAB_ALLOW_PRIVATE=true` in your envir
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). All contributors must agree to the [CLA](CLA.md).
 
-Schema accuracy bugs (our payload doesn't match Stripe's actual behavior) are treated as P0 — we aim to fix within 24 hours.
+Schema accuracy bugs (our payload doesn't match Stripe's actual behavior) are treated as P0. We aim to fix within 24 hours.
 
 ## License
 
