@@ -40,7 +40,7 @@ This header defines the boundary between the open-source project (which document
 
 1. **Fork the repository** and create a branch from `main`.
 
-2. **Make your changes.** Follow the coding standards below. Event generators should produce structurally correct Stripe payloads — validate against Stripe's documentation.
+2. **Make your changes.** Follow the coding standards below. Event generators should produce structurally correct Stripe payloads: validate against Stripe's documentation.
 
 3. **Write tests.** New event generators and scenario presets should include tests that verify payload structure. Signing changes should include verification tests.
 
@@ -58,19 +58,19 @@ This header defines the boundary between the open-source project (which document
 
 ## Coding Standards
 
-- **TypeScript strict mode** — no `any` types, no type assertions without justification.
-- **SPDX headers** — every new `.ts` or `.tsx` file must start with `// Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0`
-- **Zero runtime dependencies** — the `events` and `signatures` packages must remain dependency-free. Node `crypto` is the only permitted import.
-- **Pure functions** — all event generator functions accept a plain options object and return a plain object. No side effects, no external calls, no framework-specific types.
-- **Lucide icons only** — no emoji in UI. Named imports only, never `import *`.
-- **Use existing utilities** — ID generation via `packages/events/src/utils/ids.ts`, timestamps via `packages/events/src/utils/timestamps.ts`.
+- **TypeScript strict mode**: no `any` types, no type assertions without justification.
+- **SPDX headers**: every new `.ts` or `.tsx` file must start with `// Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0`
+- **Zero runtime dependencies**: the `events` and `signatures` packages must remain dependency-free. Node `crypto` is the only permitted import.
+- **Pure functions**: all event generator functions accept a plain options object and return a plain object. No side effects, no external calls, no framework-specific types.
+- **Lucide icons only**: no emoji in UI. Named imports only, never `import *`.
+- **Use existing utilities**: ID generation via `packages/events/src/utils/ids.ts`, timestamps via `packages/events/src/utils/timestamps.ts`.
 
 ## Testing
 
 New event generators must include:
-- **Schema structure test** — required fields present, correct types, correct ID prefixes.
-- **Enum validation test** — status values, decline codes, and other enums match Stripe's documented values.
-- **Integration test** if part of a scenario — entity ID correlation across events in the sequence.
+- **Schema structure test**: required fields present, correct types, correct ID prefixes.
+- **Enum validation test**: status values, decline codes, and other enums match Stripe's documented values.
+- **Integration test** if part of a scenario: entity ID correlation across events in the sequence.
 
 Schema accuracy bugs (our payload doesn't match Stripe's actual behavior) are treated as P0. When reporting schema bugs, include the event type, the field that's incorrect, and evidence from Stripe's documentation or a real Stripe event.
 

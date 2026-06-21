@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Legal & Trust — Webhook Lab',
+  title: 'Legal & Trust | Webhook Lab',
   description:
     'How Webhook Lab handles your data, plus links to Sutyr’s privacy policy, terms of use, sub-processors, and security.',
 };
@@ -42,7 +42,7 @@ export default function LegalPage() {
         <div className="mt-5 space-y-4 font-sans text-[0.88rem] leading-[1.55] text-text-secondary">
           <p>
             Webhook Lab proxies the event you fire to the endpoint you specify. To do that it
-            processes — in memory, for the duration of the request only — your{' '}
+            processes (in memory, for the duration of the request only) your{' '}
             <span className="text-text-primary">target URL</span>, the{' '}
             <span className="text-text-primary">event payload</span>, the{' '}
             <span className="text-text-primary">signing secret</span>, and your{' '}
@@ -55,7 +55,7 @@ export default function LegalPage() {
             your theme and last-used preferences and never leaves your device.
           </p>
           <p className="rounded-card border border-border bg-surface-card p-3 text-[0.81rem] text-text-tertiary">
-            Use synthetic test data — which the Lab generates for you — rather than real customer or
+            Use synthetic test data (which the Lab generates for you) rather than real customer or
             personal data in payloads.
           </p>
         </div>

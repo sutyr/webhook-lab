@@ -60,18 +60,18 @@ These controls are implemented in-tree and are fair game for scrutiny:
 
 | Control | Where |
 | ------- | ----- |
-| SSRF protection — blocks loopback, RFC 1918, link-local (169.254/16), carrier-grade NAT (100.64/10), cloud-metadata hosts, IPv6 loopback/ULA/link-local/IPv4-mapped, and non-HTTP schemes | `apps/web/src/lib/url-validator.ts` |
+| SSRF protection: blocks loopback, RFC 1918, link-local (169.254/16), carrier-grade NAT (100.64/10), cloud-metadata hosts, IPv6 loopback/ULA/link-local/IPv4-mapped, and non-HTTP schemes | `apps/web/src/lib/url-validator.ts` |
 | No redirect following (`redirect: 'manual'`) so a validated URL cannot bounce to an internal target | `apps/web/src/app/api/fire/route.ts`, `fire-prepared/route.ts` |
-| Stripe-compatible signing — HMAC-SHA256, secret used verbatim, constant-time comparison (`timingSafeEqual`), 300s timestamp tolerance | `packages/signatures/src` |
-| Rate limiting — 60 requests/min per IP (the hosted instance adds edge enforcement) | `apps/web/src/lib/rate-limit.ts` |
+| Stripe-compatible signing: HMAC-SHA256, secret used verbatim, constant-time comparison (`timingSafeEqual`), 300s timestamp tolerance | `packages/signatures/src` |
+| Rate limiting: 60 requests/min per IP (the hosted instance adds edge enforcement) | `apps/web/src/lib/rate-limit.ts` |
 | Request body limit (512 KB), Content-Type validation, malformed-JSON handling | `apps/web/src/lib/parse-body.ts` |
 | Response read cap (1 MB) and outbound request timeout | `apps/web/src/app/api/fire/route.ts` |
-| Security headers — CSP, HSTS, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` | `apps/web/next.config.ts` |
+| Security headers: CSP, HSTS, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy` | `apps/web/next.config.ts` |
 | Per-request correlation ID (`X-Webhook-Lab-Request-Id`) | `apps/web/src/app/api/fire/route.ts` |
 
 ## In Scope
 
-- SSRF bypasses — any way to reach private, internal, or cloud-metadata
+- SSRF bypasses: any way to reach private, internal, or cloud-metadata
   addresses despite `url-validator.ts` (e.g. DNS rebinding, parser confusion,
   encoding tricks)
 - Signature forgery or timing side-channels in `packages/signatures`
@@ -82,14 +82,14 @@ These controls are implemented in-tree and are fair game for scrutiny:
 
 ## Out of Scope
 
-- The tool sending requests to a **public** endpoint you supply — that is its
+- The tool sending requests to a **public** endpoint you supply: that is its
   purpose. Only reaching **private/internal** infrastructure is a vulnerability.
 - Self-hosted instances running with `WEBHOOK_LAB_ALLOW_PRIVATE=true` (SSRF is
   intentionally disabled there)
 - The in-memory rate limiter being "soft" on self-hosted deployments (the hosted
   instance enforces limits at the edge)
 - The fact that fired payloads transit the server (documented proxy behavior)
-- Absence of authentication (intentional — no accounts)
+- Absence of authentication (intentional: no accounts)
 - Vulnerabilities in **your** webhook handler or your own infrastructure
 - Best-practice or missing-header suggestions without demonstrable impact, and
   automated scanner output without a working proof of concept
