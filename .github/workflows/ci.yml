@@ -5,18 +5,32 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+
+# Only the latest run per ref needs to finish; cancel superseded runs so rapid
+# pushes do not pile up (and do not generate a backlog of failure notifications).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Least privilege: CI only needs to read the repo.
+permissions:
+  contents: read
 
 jobs:
-  test:
+  build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
+      # No version here: pnpm/action-setup reads the version pinned by the
+      # "packageManager" field in package.json (pnpm@10.30.3). Specifying both
+      # is an error (ERR_PNPM_BAD_PM_VERSION).
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,15 +41,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build library packages
+      # Topological build: packages/events and packages/signatures compile
+      # before apps/web (which imports their dist), then Next builds the app.
+      - name: Build (packages + web)
         run: pnpm -r build
-
-      - name: Run all tests
-        run: pnpm test
-
-      - name: Build web app
-        run: pnpm --filter web build
         env:
-          # The web build must not require any secrets; this guards against
-          # accidental coupling to deployment-only environment variables.
           NODE_ENV: production
+
+      - name: Test (unit + integration)
+        run: pnpm test
