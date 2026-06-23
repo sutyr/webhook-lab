@@ -62,7 +62,7 @@ Initial public release.
 - Rate limiting (60 req/min per IP)
 - Request correlation IDs
 - Security headers (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy)
-- Zero telemetry, zero analytics in source
+- Cookieless, GDPR-friendly analytics; event payloads, signing secrets, and target URLs never stored or logged
 
 ### Testing
 

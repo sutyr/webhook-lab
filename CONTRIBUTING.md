@@ -28,7 +28,7 @@ This header defines the boundary between the open-source project (which document
 
 ## What We Don't Accept
 
-**Telemetry or analytics.** This project contains zero tracking code. Contributions that add any form of analytics, telemetry, usage tracking, or external network calls not initiated by the user will be rejected.
+**Telemetry and analytics.** The hosted instance uses cookieless, GDPR-friendly page analytics, off by default in the open-source code. Contributions that add cookie-based tracking, cross-site tracking, third-party trackers, or any external network calls not initiated by the user (beyond the optional cookieless analytics) will be rejected.
 
 **Authentication or account systems.** The tool is designed to work without authentication. Contributions that add login, signup, or account features will be rejected.
 

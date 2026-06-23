@@ -9,7 +9,7 @@ Key facts:
 - 5 billing lifecycle scenarios with correlated entity IDs (e.g. failed-payment dunning, dispute lifecycle).
 - Valid HMAC-SHA256 signatures, verified end-to-end against Stripe's official SDK.
 - Export any event as cURL, TypeScript, or Python.
-- Zero telemetry: requests are proxied to your endpoint and processed in memory only. Nothing is stored or logged.
+- Privacy-friendly: cookieless, GDPR-aligned page analytics (no cookies); requests are proxied to your endpoint and processed in memory only, with payloads, signing secrets, and target URLs never stored or logged.
 - Apache 2.0, open source.
 
 Webhook Lab is the open companion to Sutyr, a billing orchestration platform for B2B SaaS on Stripe. The Lab generates and fires events; it does not prescribe how to respond to them (that orchestration is Sutyr's domain).

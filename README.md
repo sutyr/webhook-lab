@@ -62,7 +62,7 @@ await fetch('https://your-server.com/webhook', {
 - **Coverage tracking**: see which event types you've tested this session
 - **756 tests**: schema validation, SSRF protection, signature compatibility, entity correlation
 - **Zero runtime dependencies** in library packages
-- **Zero telemetry**: no analytics, no tracking, no cookies; only functional localStorage for preferences
+- **Privacy-friendly**: cookieless, GDPR-aligned analytics on the hosted instance (off by default for self-hosting); no tracking cookies; your event payloads, signing secrets, and target URLs are never stored or logged
 
 ## Schema Accuracy
 
