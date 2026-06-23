@@ -49,10 +49,11 @@ export default function LegalPage() {
             <span className="text-text-primary">IP address</span> (used solely for rate limiting).
           </p>
           <p>
-            It does <span className="text-text-primary">not store or log</span> any of these. There
-            is no database, no analytics, and no tracking. The only client-side storage is your
-            browser’s <span className="font-mono text-[0.81rem]">localStorage</span>, which holds
-            your theme and last-used preferences and never leaves your device.
+            It does <span className="text-text-primary">not store or log</span> any of these. The
+            Lab is <span className="text-text-primary">cookieless</span>: no database, no analytics,
+            and no tracking. The only client-side storage is your browser’s{' '}
+            <span className="font-mono text-[0.81rem]">localStorage</span> (which is not a cookie),
+            holding your theme and last-used preferences and never leaving your device.
           </p>
           <p className="rounded-card border border-border bg-surface-card p-3 text-[0.81rem] text-text-tertiary">
             Use synthetic test data (which the Lab generates for you) rather than real customer or
