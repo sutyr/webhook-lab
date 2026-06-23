@@ -121,6 +121,8 @@ pnpm dev
 
 Open `http://localhost:3000`. Set `WEBHOOK_LAB_ALLOW_PRIVATE=true` in your environment to fire events to localhost endpoints.
 
+Self-hosted instances collect no analytics by default. The hosted instance at `lab.sutyr.com` enables cookieless, GDPR-friendly page analytics by setting `WEBHOOK_LAB_ANALYTICS=true`; leave it unset and nothing is collected.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). All contributors must agree to the [CLA](CLA.md).

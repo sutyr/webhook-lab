@@ -1,6 +1,7 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 import type { Metadata, Viewport } from 'next';
 import { Instrument_Serif, DM_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { LabProvider } from '@/lib/lab-context';
 import './globals.css';
@@ -83,6 +84,10 @@ export default function RootLayout({
         <ThemeProvider>
           <LabProvider>{children}</LabProvider>
         </ThemeProvider>
+        {/* Cookieless, GDPR-friendly page analytics. Off by default: only the
+            hosted instance sets WEBHOOK_LAB_ANALYTICS=true (a server-only env
+            var, never committed), so self-hosted/cloned builds collect nothing. */}
+        {process.env.WEBHOOK_LAB_ANALYTICS === 'true' && <Analytics />}
       </body>
     </html>
   );
