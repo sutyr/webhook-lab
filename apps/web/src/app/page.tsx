@@ -38,7 +38,11 @@ export default function HomePage() {
 
   return (
     <ErrorBoundary>
-      <div className="flex h-screen flex-col">
+      {/* h-dvh (dynamic viewport) not h-screen/100vh: on iOS Safari 100vh is the
+          large viewport, so the column overflowed by the toolbar height, letting
+          the page scroll-shift and hiding the footer behind Safari's bottom bar.
+          dvh tracks the visible area, pinning header/footer with no reflow. */}
+      <div className="flex h-dvh flex-col">
         <Header onMenuClick={() => setDrawerOpen(true)} />
 
         {/* Mobile-only Editor | Response segmented control */}

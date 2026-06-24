@@ -24,7 +24,7 @@ const EXTERNAL =
 
 export default function LegalPage() {
   return (
-    <div className="min-h-screen bg-surface-page text-text-primary">
+    <div className="min-h-dvh bg-surface-page text-text-primary">
       {/* Top bar */}
       <header className="flex h-[58px] items-center border-b border-border-medium bg-surface-card px-4 pt-[env(safe-area-inset-top)]">
         <Link href="/" className="flex items-center gap-[10px] text-text-primary">
