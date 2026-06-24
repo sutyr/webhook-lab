@@ -4,6 +4,7 @@ import { Instrument_Serif, DM_Sans, IBM_Plex_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { LabProvider } from '@/lib/lab-context';
+import { structuredData } from '@/lib/schema';
 import './globals.css';
 
 const instrumentSerif = Instrument_Serif({
@@ -79,6 +80,12 @@ export default function RootLayout({
         <noscript>
           <style>{'.panel-animated { opacity: 1 !important; transform: none !important; }'}</style>
         </noscript>
+        {/* Cross-domain entity-consolidation JSON-LD. Hardcoded constant
+            (see lib/schema.ts) — no user input. Safe for dangerouslySetInnerHTML. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
       </head>
       <body>
         <ThemeProvider>

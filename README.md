@@ -133,6 +133,6 @@ Schema accuracy bugs (our payload doesn't match Stripe's actual behavior) are tr
 
 Webhook Lab is open source, licensed under the [Apache License 2.0](LICENSE).
 
-The Sutyr billing orchestration platform is a separate proprietary product. Use of Webhook Lab does not grant any license to Sutyr's proprietary software, trade secrets, or platform services.
+The [Sutyr](https://sutyr.com) billing orchestration platform is a separate proprietary product. Use of Webhook Lab does not grant any license to Sutyr's proprietary software, trade secrets, or platform services.
 
 This project is not developed, maintained, endorsed, or sponsored by Stripe, Inc. Stripe is a registered trademark of Stripe, Inc. Event schemas are derived from Stripe's publicly available [API documentation](https://docs.stripe.com/api).
