@@ -9,7 +9,10 @@
   "author": "Sutyr Inc. <legal@sutyr.com> (https://sutyr.com)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sutyr/webhook-lab.git"
+    "url": "git+https://github.com/sutyr/webhook-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sutyr/webhook-lab/issues"
   },
   "homepage": "https://lab.sutyr.com",
   "type": "module",

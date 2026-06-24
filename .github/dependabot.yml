@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # npm/pnpm dependencies across the workspace (root + app + library packages).
+  # Dependabot detects pnpm-lock.yaml and updates it for each manifest.
+  - package-ecosystem: npm
+    directories:
+      - "/"
+      - "/apps/web"
+      - "/packages/events"
+      - "/packages/signatures"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # Batch low-risk dev-dependency bumps into one PR to cut noise; runtime
+    # deps stay individual so each is reviewed on its own.
+    groups:
+      dev-minor-patch:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Keep GitHub Actions (checkout, setup-node, pnpm/action-setup) current.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: chore
