@@ -2,7 +2,7 @@
 
 import { sign } from '@webhook-lab/signatures';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { resolveAndValidateTarget, pinnedDispatcher } from '@/lib/outbound';
+import { resolveAndValidateTarget } from '@/lib/outbound';
 import { parseJsonBody } from '@/lib/parse-body';
 
 const MAX_RESPONSE_BODY = 1024 * 1024; // 1MB
@@ -105,14 +105,9 @@ export async function POST(request: Request) {
   const controller = new AbortController();
   // Under the 10s function maxDuration so we return a clean timeout ourselves.
   const timeout = setTimeout(() => controller.abort(), 9_000);
-  // Pin the connection to the validated address so it cannot be re-resolved to
-  // an internal host between validation and connect (DNS rebinding).
-  const dispatcher = urlCheck.address
-    ? pinnedDispatcher(urlCheck.address, urlCheck.family ?? 4)
-    : undefined;
 
   try {
-    const init: RequestInit & { dispatcher?: unknown } = {
+    const res = await fetch(new URL(targetUrl).toString(), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -125,9 +120,7 @@ export async function POST(request: Request) {
       // Do NOT follow redirects: only the original URL passed SSRF validation,
       // and Stripe itself treats a 3xx webhook response as a failed delivery.
       redirect: 'manual',
-    };
-    if (dispatcher) init.dispatcher = dispatcher;
-    const res = await fetch(new URL(targetUrl).toString(), init);
+    });
 
     const responseTimeMs = Math.round(performance.now() - startTime);
     const { body: responseBody, truncated } = await readResponseBody(res);
@@ -162,6 +155,5 @@ export async function POST(request: Request) {
     });
   } finally {
     clearTimeout(timeout);
-    if (dispatcher) await dispatcher.close().catch(() => {});
   }
 }

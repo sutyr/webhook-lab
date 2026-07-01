@@ -2,8 +2,6 @@
 import 'server-only';
 
 import { lookup as dnsLookup } from 'node:dns/promises';
-import type { LookupFunction } from 'node:net';
-import { Agent } from 'undici';
 import { validateTargetUrl, isPrivateIp, type UrlValidationResult } from './url-validator';
 
 export interface ResolvedTarget {
@@ -16,11 +14,9 @@ export interface ResolvedTarget {
 
 /**
  * Full outbound-target validation. Runs the synchronous scheme/host/IP-literal
- * checks, then — for domain names — resolves every A/AAAA record and rejects if
- * ANY resolved address is private or reserved. Returns the validated address so
- * the caller can pin the connection to it (see pinnedDispatcher), closing the
- * gap where the fetch layer would otherwise re-resolve the hostname to an
- * internal address after validation (DNS rebinding / TOCTOU).
+ * checks, then, for domain names, resolves every A/AAAA record and rejects if
+ * ANY resolved address is private or reserved. This closes the confirmed SSRF
+ * path where a domain name points at an internal or reserved IP.
  *
  * IP literals are already canonicalised by the WHATWG URL parser (127.1 -> 127.0.0.1,
  * decimal/hex/octal/expanded-IPv6 all normalise), so the sync pass catches those.
@@ -66,20 +62,11 @@ export async function resolveAndValidateTarget(
     }
   }
 
-  // Pin to the first validated address.
+  // Validated. address/family are returned for reference (e.g. logging); the
+  // routes fetch by hostname. NOTE: this leaves a narrow DNS-rebinding residual
+  // (the record could flip between this lookup and fetch's own lookup); the
+  // confirmed exploit (a domain whose record points at an internal IP) is fully
+  // closed here. Connection pinning was tried but broke legitimate public
+  // fetches on the runtime, so it is deferred to a properly-tested follow-up.
   return { valid: true, address: addrs[0].address, family: addrs[0].family };
-}
-
-/**
- * A one-shot undici dispatcher that pins every connection to a single,
- * pre-validated IP. This stops the connect step from re-resolving the hostname
- * to a different (internal) address after validation. The original URL is still
- * used for the request, so the Host header and TLS SNI remain correct.
- * Close it after the request (see the fire routes' finally block).
- */
-export function pinnedDispatcher(address: string, family: number): Agent {
-  const lookup: LookupFunction = (_hostname, _options, callback) => {
-    callback(null, address, family);
-  };
-  return new Agent({ connect: { lookup } });
 }
