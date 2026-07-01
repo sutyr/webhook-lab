@@ -3,6 +3,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { verify } from '@webhook-lab/signatures';
 import { POST } from '@/app/api/fire/route';
+import { lookup } from 'node:dns/promises';
+
+// Resolve domain targets to a public IP by default so tests run offline.
+// Individual tests override this to simulate a domain resolving internally.
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]),
+}));
 
 const originalFetch = global.fetch;
 
@@ -114,6 +121,21 @@ describe('POST /api/fire', () => {
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error.code).toBe('BLOCKED_HOST');
+  });
+
+  it('returns 400 BLOCKED_IP for a domain that resolves to a private IP', async () => {
+    // The literal 127.0.0.1 was already blocked; this covers the DNS path:
+    // a domain name whose A record points at an internal address.
+    vi.mocked(lookup).mockResolvedValueOnce([{ address: '10.0.0.5', family: 4 }] as never);
+    const request = makeRequest({
+      eventType: 'payment_intent.succeeded',
+      targetUrl: 'http://internal.example.com/webhook',
+    });
+    const response = await POST(request);
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error.code).toBe('BLOCKED_IP');
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   // ─── Event type validation ────────────────────────────────────────────────

@@ -39,7 +39,7 @@ function isPrivateIpv4(ip: string): boolean {
   return false;
 }
 
-function isPrivateIp(hostname: string): boolean {
+export function isPrivateIp(hostname: string): boolean {
   // IPv6 loopback
   if (hostname === '[::1]' || hostname === '::1') return true;
 

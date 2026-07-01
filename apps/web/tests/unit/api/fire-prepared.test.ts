@@ -2,6 +2,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { POST } from '@/app/api/fire-prepared/route';
+import { lookup } from 'node:dns/promises';
+
+// Resolve domain targets to a public IP by default so tests run offline.
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]),
+}));
 
 const originalFetch = global.fetch;
 
@@ -96,6 +102,19 @@ describe('POST /api/fire-prepared', () => {
     const data = await response.json();
     expect(response.status).toBe(400);
     expect(data.error.code).toBe('BLOCKED_IP');
+  });
+
+  it('returns 400 BLOCKED_IP for a domain that resolves to a reserved IP', async () => {
+    vi.mocked(lookup).mockResolvedValueOnce([{ address: '169.254.169.254', family: 4 }] as never);
+    const request = makeRequest({
+      payload: samplePayload,
+      targetUrl: 'http://metadata.example.com/webhook',
+    });
+    const response = await POST(request);
+    const data = await response.json();
+    expect(response.status).toBe(400);
+    expect(data.error.code).toBe('BLOCKED_IP');
+    expect(global.fetch).not.toHaveBeenCalled();
   });
 
   it('returns statusCode, responseBody, responseTimeMs, signatureHeader, and requestId', async () => {

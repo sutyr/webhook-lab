@@ -2,7 +2,7 @@
 
 import { sign } from '@webhook-lab/signatures';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { validateTargetUrl } from '@/lib/url-validator';
+import { resolveAndValidateTarget, pinnedDispatcher } from '@/lib/outbound';
 import { parseJsonBody } from '@/lib/parse-body';
 
 const MAX_RESPONSE_BODY = 1024 * 1024; // 1MB
@@ -52,7 +52,14 @@ export async function POST(request: Request) {
   }
 
   // ── Rate limit ──────────────────────────────────────────────────────────────
-  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
+  // Trust only the platform-set client IP; raw x-forwarded-for is client-settable.
+  // The Vercel WAF rate rule (keyed on the true edge IP) is the primary control;
+  // this app-level limit is defense-in-depth.
+  const ip =
+    request.headers.get('x-real-ip') ||
+    request.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim() ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    '127.0.0.1';
   const rateLimit = checkRateLimit(ip);
 
   if (!rateLimit.allowed) {
@@ -72,7 +79,9 @@ export async function POST(request: Request) {
   const { payload, targetUrl, signingSecret } = parsed.data;
 
   // ── Validate target URL (SSRF protection) ─────────────────────────────────
-  const urlCheck = validateTargetUrl(targetUrl ?? '', {
+  // Resolves the host and validates every resolved address, then the connection
+  // is pinned to it below.
+  const urlCheck = await resolveAndValidateTarget(targetUrl ?? '', {
     allowPrivate: process.env.WEBHOOK_LAB_ALLOW_PRIVATE === 'true',
   });
 
@@ -94,10 +103,16 @@ export async function POST(request: Request) {
   // ── Fire ────────────────────────────────────────────────────────────────────
   const startTime = performance.now();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  // Under the 10s function maxDuration so we return a clean timeout ourselves.
+  const timeout = setTimeout(() => controller.abort(), 9_000);
+  // Pin the connection to the validated address so it cannot be re-resolved to
+  // an internal host between validation and connect (DNS rebinding).
+  const dispatcher = urlCheck.address
+    ? pinnedDispatcher(urlCheck.address, urlCheck.family ?? 4)
+    : undefined;
 
   try {
-    const res = await fetch(new URL(targetUrl).toString(), {
+    const init: RequestInit & { dispatcher?: unknown } = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -110,9 +125,10 @@ export async function POST(request: Request) {
       // Do NOT follow redirects: only the original URL passed SSRF validation,
       // and Stripe itself treats a 3xx webhook response as a failed delivery.
       redirect: 'manual',
-    });
+    };
+    if (dispatcher) init.dispatcher = dispatcher;
+    const res = await fetch(new URL(targetUrl).toString(), init);
 
-    clearTimeout(timeout);
     const responseTimeMs = Math.round(performance.now() - startTime);
     const { body: responseBody, truncated } = await readResponseBody(res);
 
@@ -125,12 +141,11 @@ export async function POST(request: Request) {
       truncated,
     });
   } catch (err: unknown) {
-    clearTimeout(timeout);
     const responseTimeMs = Math.round(performance.now() - startTime);
 
     let errorMessage = 'Network error';
     if (err instanceof DOMException && err.name === 'AbortError') {
-      errorMessage = 'Request timed out after 30 seconds';
+      errorMessage = 'Request timed out after 9 seconds';
     } else if (err instanceof TypeError) {
       errorMessage = `Network error: ${err.message}`;
     } else if (err instanceof Error) {
@@ -145,5 +160,8 @@ export async function POST(request: Request) {
       requestId,
       truncated: false,
     });
+  } finally {
+    clearTimeout(timeout);
+    if (dispatcher) await dispatcher.close().catch(() => {});
   }
 }
