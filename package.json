@@ -48,7 +48,8 @@
     "webhook-lab": "./dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "NOTICE"
   ],
   "engines": {
     "node": ">=22"
