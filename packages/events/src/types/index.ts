@@ -677,6 +677,7 @@ export type EventCategory =
   | 'subscriptions'
   | 'checkout'
   | 'customers'
+  | 'payment_methods'
   | 'disputes';
 
 export type StripeEventType =
@@ -697,7 +698,32 @@ export type StripeEventType =
   | 'customer.updated'
   | 'charge.dispute.created'
   | 'charge.dispute.updated'
-  | 'charge.dispute.closed';
+  | 'charge.dispute.closed'
+  // Invoices
+  | 'invoice.upcoming'
+  | 'invoice.finalized'
+  | 'invoice.payment_action_required'
+  | 'invoice.marked_uncollectible'
+  | 'invoice.overdue'
+  | 'invoice.voided'
+  | 'invoice_payment.paid'
+  // Subscriptions and customers
+  | 'customer.subscription.trial_will_end'
+  | 'customer.subscription.paused'
+  | 'customer.subscription.resumed'
+  | 'customer.deleted'
+  // Payments, refunds and fraud
+  | 'payment_intent.requires_action'
+  | 'payment_intent.canceled'
+  | 'charge.failed'
+  | 'refund.created'
+  | 'radar.early_fraud_warning.created'
+  // Checkout and payment methods
+  | 'checkout.session.async_payment_succeeded'
+  | 'checkout.session.async_payment_failed'
+  | 'payment_method.attached'
+  | 'payment_method.automatically_updated'
+  | 'setup_intent.succeeded';
 
 export interface EventCatalogEntry {
   type: StripeEventType;
