@@ -70,7 +70,7 @@ timestamp = int(time.time())
 # match JavaScript's JSON.stringify (no spaces) so the signature is stable.
 body = json.dumps(payload, separators=(',', ':'))
 signed_payload = f"{timestamp}.{body}"
-# The secret is used verbatim — matching Stripe's official SDK, which does
+# The secret is used verbatim, matching Stripe's official SDK, which does
 # NOT strip the whsec_ prefix before HMAC-ing.
 signature = hmac.new(
     secret.encode(),

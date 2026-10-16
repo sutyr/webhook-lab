@@ -51,6 +51,13 @@ const DISPUTE_REASON_OPTIONS = [
   { value: 'subscription_canceled', label: 'Subscription canceled' },
   { value: 'product_unacceptable', label: 'Product unacceptable' },
   { value: 'unrecognized', label: 'Unrecognized' },
+  { value: 'bank_cannot_process', label: 'Bank cannot process' },
+  { value: 'check_returned', label: 'Check returned' },
+  { value: 'customer_initiated', label: 'Customer initiated' },
+  { value: 'debit_not_authorized', label: 'Debit not authorized' },
+  { value: 'incorrect_account_details', label: 'Incorrect account details' },
+  { value: 'insufficient_funds', label: 'Insufficient funds' },
+  { value: 'noncompliant', label: 'Noncompliant' },
 ];
 
 const DISPUTE_STATUS_OPTIONS = [
@@ -65,6 +72,7 @@ const SUBSCRIPTION_STATUS_OPTIONS = [
   { value: 'unpaid', label: 'Unpaid' },
   { value: 'trialing', label: 'Trialing' },
   { value: 'incomplete', label: 'Incomplete' },
+  { value: 'incomplete_expired', label: 'Incomplete expired' },
   { value: 'paused', label: 'Paused' },
 ];
 
@@ -72,6 +80,7 @@ const BILLING_REASON_OPTIONS = [
   { value: 'subscription_cycle', label: 'Subscription cycle' },
   { value: 'subscription_create', label: 'Subscription create' },
   { value: 'subscription_update', label: 'Subscription update' },
+  { value: 'subscription_threshold', label: 'Subscription threshold' },
   { value: 'manual', label: 'Manual' },
 ];
 
@@ -125,7 +134,7 @@ const customerIdField: FieldDef = {
 
 const paymentIntentIdField: FieldDef = {
   key: 'paymentIntentId',
-  label: 'Payment Intent ID',
+  label: 'Payment intent ID',
   type: 'text',
   defaultValue: '',
   mono: true,
@@ -158,7 +167,7 @@ const subscriptionIdField: FieldDef = {
 
 const paymentMethodIdField: FieldDef = {
   key: 'paymentMethodId',
-  label: 'Payment Method ID',
+  label: 'Payment method ID',
   type: 'text',
   defaultValue: '',
   mono: true,
@@ -171,7 +180,7 @@ const paymentMethodIdField: FieldDef = {
 
 const livemodeField: FieldDef = {
   key: 'livemode',
-  label: 'Live Mode',
+  label: 'Live mode',
   type: 'select',
   defaultValue: 'false',
   options: [
@@ -185,7 +194,7 @@ const livemodeField: FieldDef = {
 
 const apiVersionField: FieldDef = {
   key: 'apiVersion',
-  label: 'API Version',
+  label: 'API version',
   type: 'text',
   defaultValue: '',
   mono: true,
@@ -211,7 +220,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'declineCode',
-      label: 'Decline Code',
+      label: 'Decline code',
       type: 'select',
       defaultValue: 'generic_decline',
       options: DECLINE_CODE_OPTIONS,
@@ -227,7 +236,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'cardBrand',
-      label: 'Card Brand',
+      label: 'Card brand',
       type: 'select',
       defaultValue: 'visa',
       options: CARD_BRAND_OPTIONS,
@@ -235,7 +244,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     },
     {
       key: 'cardLast4',
-      label: 'Card Last 4',
+      label: 'Card last 4',
       type: 'text',
       defaultValue: '4242',
       mono: true,
@@ -250,7 +259,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'refundAmount',
-      label: 'Refund Amount (cents, empty = full)',
+      label: 'Refund amount (cents, empty = full)',
       type: 'number',
       defaultValue: '',
       mono: true,
@@ -265,7 +274,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'billingReason',
-      label: 'Billing Reason',
+      label: 'Billing reason',
       type: 'select',
       defaultValue: 'subscription_cycle',
       options: BILLING_REASON_OPTIONS,
@@ -285,7 +294,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'attemptCount',
-      label: 'Attempt Count',
+      label: 'Attempt count',
       type: 'number',
       defaultValue: 1,
       mono: true,
@@ -303,7 +312,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
   'customer.subscription.created': [
     {
       key: 'priceAmount',
-      label: 'Price Amount (cents)',
+      label: 'Price amount (cents)',
       type: 'number',
       defaultValue: 2999,
       mono: true,
@@ -312,7 +321,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'interval',
-      label: 'Billing Interval',
+      label: 'Billing interval',
       type: 'select',
       defaultValue: 'month',
       options: INTERVAL_OPTIONS,
@@ -331,7 +340,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
   'customer.subscription.updated': [
     {
       key: 'status',
-      label: 'New Status',
+      label: 'New status',
       type: 'select',
       defaultValue: 'past_due',
       options: SUBSCRIPTION_STATUS_OPTIONS,
@@ -339,7 +348,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     },
     {
       key: 'previousStatus',
-      label: 'Previous Status',
+      label: 'Previous status',
       type: 'select',
       defaultValue: 'active',
       options: SUBSCRIPTION_STATUS_OPTIONS,
@@ -347,7 +356,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     },
     {
       key: 'cancelAtPeriodEnd',
-      label: 'Cancel at Period End',
+      label: 'Cancel at period end',
       type: 'select',
       defaultValue: 'false',
       options: [
@@ -367,7 +376,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'mode',
-      label: 'Checkout Mode',
+      label: 'Checkout mode',
       type: 'select',
       defaultValue: 'payment',
       options: CHECKOUT_MODE_OPTIONS,
@@ -380,7 +389,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
   'checkout.session.expired': [
     {
       key: 'mode',
-      label: 'Checkout Mode',
+      label: 'Checkout mode',
       type: 'select',
       defaultValue: 'payment',
       options: CHECKOUT_MODE_OPTIONS,
@@ -413,7 +422,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     },
     {
       key: 'previousEmail',
-      label: 'Previous Email',
+      label: 'Previous email',
       type: 'text',
       defaultValue: 'old@example.com',
       jsonPath: 'data.previous_attributes.email',
@@ -432,7 +441,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'reason',
-      label: 'Dispute Reason',
+      label: 'Dispute reason',
       type: 'select',
       defaultValue: 'fraudulent',
       options: DISPUTE_REASON_OPTIONS,
@@ -445,7 +454,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
     currencyField,
     {
       key: 'reason',
-      label: 'Dispute Reason',
+      label: 'Dispute reason',
       type: 'select',
       defaultValue: 'fraudulent',
       options: DISPUTE_REASON_OPTIONS,

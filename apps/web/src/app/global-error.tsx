@@ -17,7 +17,7 @@ export default function GlobalError({
   // This replaces the root layout, so it must be fully self-contained: its own
   // <html>/<body> and inline styles, since globals.css and the theme provider
   // are not guaranteed to be available when the root layout itself failed.
-  // Dark surface (the app default), copper accent, hardcoded design tokens.
+  // Dark surface (the app default), tonal mark, hardcoded design tokens.
   return (
     <html lang="en">
       <body
@@ -30,21 +30,21 @@ export default function GlobalError({
           justifyContent: 'center',
           gap: '16px',
           padding: '24px',
-          backgroundColor: '#0F0C08',
-          color: '#FAF6F0',
+          backgroundColor: '#0A0A0A',
+          color: '#F5F5F5',
           fontFamily: 'system-ui, sans-serif',
           textAlign: 'center',
         }}
       >
         <svg viewBox="0 0 100 100" width={28} height={28} aria-hidden="true">
-          <path d="M16 12L84 12L84 59.5L52.5 59.5L52.5 35.5L16 35.5Z" fill="#E8EEF7" />
-          <path d="M84 88L16 88L16 40.5L47.5 40.5L47.5 64.5L84 64.5Z" fill="#D49A3A" />
+          <path d="M16 12L84 12L84 59.5L52.5 59.5L52.5 35.5L16 35.5Z" fill="#FFFFFF" />
+          <path d="M84 88L16 88L16 40.5L47.5 40.5L47.5 64.5L84 64.5Z" fill="#BABABA" />
         </svg>
         <h1 style={{ fontSize: '20px', fontWeight: 500, margin: 0 }}>Something went wrong</h1>
         <p
           style={{
             fontSize: '14px',
-            color: '#CFC8BA',
+            color: '#A3A3A3',
             maxWidth: '28rem',
             margin: 0,
             lineHeight: 1.5,
@@ -54,7 +54,7 @@ export default function GlobalError({
           the issue is on our side.
         </p>
         {error.digest && (
-          <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#9E9588', margin: 0 }}>
+          <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#8A8A8A', margin: 0 }}>
             Reference: {error.digest}
           </p>
         )}

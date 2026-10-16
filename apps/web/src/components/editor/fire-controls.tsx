@@ -155,7 +155,7 @@ export function FireControls() {
 
       <div>
         <label htmlFor="fire-signing-secret" className="mb-1 block font-sans text-[0.75rem] text-text-secondary">
-          Signing Secret
+          Signing secret
         </label>
         <div className="relative">
           <input
@@ -197,11 +197,12 @@ export function FireControls() {
         disabled={fireDisabled}
         aria-busy={isLoading}
         className={cn(
-          'relative w-full min-h-[44px] overflow-hidden rounded-cta py-2.5 font-sans text-[0.81rem] font-medium text-white transition-all duration-150',
+          'relative w-full min-h-[44px] overflow-hidden rounded-cta py-2.5 font-sans text-[0.81rem] font-medium transition-all duration-150',
           isLoading
-            ? 'cursor-wait bg-copper/80'
-            : 'bg-copper hover:bg-copper/90 active:scale-[0.99]',
-          fireDisabled && !isLoading && 'cursor-not-allowed opacity-50',
+            ? 'cursor-wait bg-copper/80 text-white'
+            : fireDisabled
+              ? 'cursor-not-allowed border border-border-medium bg-surface-input text-text-muted'
+              : 'bg-copper text-white hover:bg-copper/90 active:scale-[0.99]',
           flashState === 'success' && 'shadow-[0_0_0_3px_rgba(91,184,112,0.4)]',
           flashState === 'error' && 'shadow-[0_0_0_3px_rgba(224,85,64,0.4)]',
         )}
@@ -214,7 +215,16 @@ export function FireControls() {
         ) : (
           <span key="ready" className="flex animate-fade-in items-center justify-center gap-2">
             Fire Event
-            <kbd className="rounded-badge border border-white/10 bg-white/15 px-1.5 py-0.5 font-mono text-[0.6rem] text-white/70">⌘↵</kbd>
+            <kbd
+              className={cn(
+                'rounded-badge border px-1.5 py-0.5 font-mono text-[0.6rem]',
+                fireDisabled
+                  ? 'border-border-medium text-text-muted'
+                  : 'border-white/10 bg-white/15 text-white/70',
+              )}
+            >
+              ⌘↵
+            </kbd>
           </span>
         )}
 

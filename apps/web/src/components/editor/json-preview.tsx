@@ -204,7 +204,7 @@ export function JsonPreview() {
         </div>
         {parseError && (
           <p className="mt-2 font-sans text-[0.69rem] text-state-error">
-            Invalid JSON — fix syntax to fire
+            Invalid JSON. Fix the syntax to fire.
           </p>
         )}
       </div>

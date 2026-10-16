@@ -77,7 +77,7 @@ export function CategoryEvents() {
       {/* Category context header (#5 scale-settle) */}
       <div className="flex items-center gap-2 px-3 py-1.5">
         {Icon && <Icon key={drillCategory} size={14} strokeWidth={1.75} className="text-text-tertiary animate-scale-settle" />}
-        <span className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-tertiary">
+        <span className="label-section">
           {label}
         </span>
       </div>

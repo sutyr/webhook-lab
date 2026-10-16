@@ -145,7 +145,7 @@ export function ResponseViewer() {
           </div>
           <div className="flex items-baseline gap-3 border-l-2 border-state-error py-1.5 pl-3">
             <span className="w-8 font-mono text-[0.81rem] font-medium text-state-error">500</span>
-            <span className="font-sans text-[0.75rem] text-text-secondary">Handler error — check your logs</span>
+            <span className="font-sans text-[0.75rem] text-text-secondary">Handler error, check your logs</span>
           </div>
         </div>
         <div className="mt-4 border-t border-border pt-4 space-y-2">
@@ -217,14 +217,14 @@ export function ResponseViewer() {
       <div>
         <AnimatedStatusCode code={response.statusCode} />
         <p className="mt-1 font-mono text-[0.69rem] text-text-muted">
-          {statusText} · {response.responseTimeMs}ms
+          {statusText}<span className="px-1.5 text-border-strong">/</span>{response.responseTimeMs}ms
         </p>
       </div>
 
       {/* Response body (#8 copy button) */}
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <p className="font-sans text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-secondary">
+          <p className="label-section">
             Response Body
           </p>
           <CopyButton text={response.responseBody} />
@@ -238,7 +238,7 @@ export function ResponseViewer() {
       {sigHeader && (
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <p className="font-sans text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-secondary">
+            <p className="label-section">
               Stripe-Signature
             </p>
             <CopyButton text={sigHeader} />
@@ -260,7 +260,7 @@ export function ResponseViewer() {
       {response.requestId && (
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <p className="font-sans text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-secondary">
+            <p className="label-section">
               Request ID
             </p>
             <CopyButton text={response.requestId} />
@@ -452,7 +452,7 @@ function HistoryRow({ entry }: { entry: ResponseHistoryEntry }) {
           {/* Response body */}
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <span className="font-sans text-[0.62rem] font-medium uppercase tracking-[0.12em] text-text-muted">
+              <span className="label-section">
                 Response
               </span>
               <CopyButton text={entry.response.responseBody} />
@@ -466,7 +466,7 @@ function HistoryRow({ entry }: { entry: ResponseHistoryEntry }) {
           {entry.response.signatureHeader && (
             <div>
               <div className="mb-1 flex items-center justify-between">
-                <span className="font-sans text-[0.62rem] font-medium uppercase tracking-[0.12em] text-text-muted">
+                <span className="label-section">
                   Signature
                 </span>
                 <CopyButton text={entry.response.signatureHeader} />

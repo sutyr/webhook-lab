@@ -29,6 +29,7 @@ const config: Config = {
           DEFAULT: 'var(--color-copper)',
           body: 'var(--color-copper-body)',
           glass: 'var(--color-copper-glass)',
+          glow: 'var(--color-copper-glow)',
         },
         state: {
           success: 'var(--color-state-success)',
@@ -38,7 +39,6 @@ const config: Config = {
         },
       },
       fontFamily: {
-        serif: ['var(--font-instrument-serif)', 'Georgia', 'serif'],
         sans: ['var(--font-dm-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-ibm-plex-mono)', 'monospace'],
       },

@@ -21,7 +21,7 @@ export function EventEditor() {
       <EventFields />
       <FireControls />
       <div className="border-t border-border pt-4">
-        <p className="mb-2 font-mono text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-muted">
+        <p className="mb-2 label-section">
           Payload
         </p>
         <JsonPreview />

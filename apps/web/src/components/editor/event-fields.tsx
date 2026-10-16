@@ -138,7 +138,7 @@ export function EventFields() {
     return (
       <div className="rounded-card bg-copper-glass px-3 py-2">
         <p className="font-sans text-[0.75rem] text-text-tertiary">
-          Form fields paused — editing payload directly
+          Form fields paused while you edit the payload directly
         </p>
       </div>
     );
@@ -225,7 +225,7 @@ export function EventFields() {
       {/* Metadata key-value builder — collapsible */}
       <MetadataBuilder />
 
-      {/* Event Options — livemode, API version */}
+      {/* Event options: livemode, API version */}
       {eventOptionFields.length > 0 && (
         <div className="border-t border-border pt-3">
           <button
@@ -238,7 +238,7 @@ export function EventFields() {
             ) : (
               <ChevronRight size={14} className="flex-shrink-0" />
             )}
-            <span>Event Options</span>
+            <span>Event options</span>
             {!eventOptionsOpen && (
               <span className="font-mono text-[0.69rem] text-text-muted">
                 (defaults)

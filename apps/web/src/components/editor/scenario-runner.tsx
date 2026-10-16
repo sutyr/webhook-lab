@@ -170,8 +170,8 @@ export function ScenarioRunner() {
 
       {/* Step list (#1 visual states, #3 quiet label) */}
       <div className="space-y-2">
-        <p className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-muted">
-          Sequence · {stepCount} events
+        <p className="label-section">
+          Sequence of {stepCount} events
         </p>
         {/* Step progress bar — visible during/after run */}
         {hasSteps && scenarioResults.some((r) => r.status !== 'pending') && (
@@ -231,7 +231,7 @@ export function ScenarioRunner() {
                                 : 'text-state-error',
                             )}
                           >
-                            {result.response.statusCode} · {result.response.responseTimeMs}ms
+                            {result.response.statusCode}<span className="px-1 text-border-strong">/</span>{result.response.responseTimeMs}ms
                           </p>
                         ) : (
                           step && (
@@ -353,7 +353,7 @@ export function ScenarioRunner() {
 
         <div>
           <label htmlFor="scenario-signing-secret" className="mb-1 block font-sans text-[0.75rem] text-text-secondary">
-            Signing Secret
+            Signing secret
           </label>
           <div className="relative">
             <input
@@ -394,11 +394,12 @@ export function ScenarioRunner() {
           onClick={handleRun}
           disabled={isRunning || !targetUrl || !hasSteps}
           className={cn(
-            'w-full min-h-[44px] rounded-cta py-2.5 font-sans text-[0.81rem] font-medium text-white transition-all duration-150',
+            'w-full min-h-[44px] rounded-cta py-2.5 font-sans text-[0.81rem] font-medium transition-all duration-150',
             isRunning
-              ? 'cursor-wait bg-copper/80'
-              : 'bg-copper hover:bg-copper/90 active:scale-[0.99]',
-            (!targetUrl || !hasSteps) && !isRunning && 'cursor-not-allowed opacity-50',
+              ? 'cursor-wait bg-copper/80 text-white'
+              : !targetUrl || !hasSteps
+                ? 'cursor-not-allowed border border-border-medium bg-surface-input text-text-muted'
+                : 'bg-copper text-white hover:bg-copper/90 active:scale-[0.99]',
           )}
         >
           {isRunning ? (

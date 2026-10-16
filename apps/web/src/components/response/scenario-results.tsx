@@ -35,7 +35,7 @@ function SegmentedProgress({
   return (
     <div className="border-b border-border px-1 pb-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-muted">
+        <span className="label-section">
           Progress
         </span>
         <span className="font-mono text-[0.75rem] text-text-secondary">
@@ -175,7 +175,7 @@ export function ScenarioResults() {
       <div className="space-y-0">
         <div className="border-b border-border px-1 pb-3">
           <div className="mb-2 flex items-center justify-between">
-            <span className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-muted">
+            <span className="label-section">
               Sequence
             </span>
             <span className="font-mono text-[0.75rem] text-text-muted">
@@ -297,7 +297,7 @@ export function ScenarioResults() {
             <p className="mt-1 font-mono text-[0.69rem] text-text-muted">
               Avg: {avg}ms
               {slowestResult?.response &&
-                ` · Slowest: ${slowestResult.eventType} (${slowestResult.response.responseTimeMs}ms)`}
+                `, slowest: ${slowestResult.eventType} (${slowestResult.response.responseTimeMs}ms)`}
             </p>
           )}
         </div>

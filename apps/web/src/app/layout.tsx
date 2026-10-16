@@ -1,19 +1,11 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 import type { Metadata, Viewport } from 'next';
-import { Instrument_Serif, DM_Sans, IBM_Plex_Mono } from 'next/font/google';
+import { DM_Sans, IBM_Plex_Mono } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/next';
 import { ThemeProvider } from '@/components/theme-provider';
 import { LabProvider } from '@/lib/lab-context';
 import { structuredData } from '@/lib/schema';
 import './globals.css';
-
-const instrumentSerif = Instrument_Serif({
-  subsets: ['latin'],
-  style: 'italic',
-  weight: '400',
-  variable: '--font-instrument-serif',
-  display: 'swap',
-});
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -53,8 +45,8 @@ export const viewport: Viewport = {
   // Extend under the notch/home-indicator so env(safe-area-inset-*) resolves.
   viewportFit: 'cover',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FAF8F4' },
-    { media: '(prefers-color-scheme: dark)', color: '#080604' },
+    { media: '(prefers-color-scheme: light)', color: '#FAFAFA' },
+    { media: '(prefers-color-scheme: dark)', color: '#050505' },
   ],
 };
 
@@ -66,12 +58,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${instrumentSerif.variable} ${dmSans.variable} ${ibmPlexMono.variable}`}
+      className={`dark ${dmSans.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
       <head>
         {/* FOUC prevention: set theme class synchronously before paint.
-            Hardcoded constant — no user input. Safe for dangerouslySetInnerHTML. */}
+            Hardcoded constant, no user input. Safe for dangerouslySetInnerHTML. */}
         <script
           dangerouslySetInnerHTML={{
             __html: `try{if(localStorage.getItem('webhook-lab-theme')==='light'){document.documentElement.classList.remove('dark')}else{document.documentElement.classList.add('dark')}}catch(e){}`,
@@ -81,7 +73,7 @@ export default function RootLayout({
           <style>{'.panel-animated { opacity: 1 !important; transform: none !important; }'}</style>
         </noscript>
         {/* Cross-domain entity-consolidation JSON-LD. Hardcoded constant
-            (see lib/schema.ts) — no user input. Safe for dangerouslySetInnerHTML. */}
+            (see lib/schema.ts), no user input. Safe for dangerouslySetInnerHTML. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

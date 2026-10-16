@@ -211,7 +211,7 @@ describe('labReducer', () => {
       eventOptions: { amount: 4999, currency: 'eur', declineCode: 'insufficient_funds' },
       timestamp: 1700000000,
       targetUrl: 'https://staging.example.com/hook',
-      configSummary: '€49.99 · insufficient_funds',
+      configSummary: '€49.99, insufficient_funds',
     };
     const state = labReducer(defaultState, { type: 'RESTORE_FROM_HISTORY', entry });
     expect(state.selectedEventType).toBe('invoice.payment_failed');

@@ -1,7 +1,7 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SutureMark } from '@/components/suture-mark';
+import { LabLockup } from '@/components/suture-mark';
 
 export const metadata: Metadata = {
   title: 'Page not found | Webhook Lab',
@@ -12,13 +12,12 @@ export default function NotFound() {
     <div className="flex min-h-dvh flex-col bg-surface-page text-text-primary">
       <header className="flex h-[58px] flex-shrink-0 items-center border-b border-border-medium bg-surface-card px-4 pt-[env(safe-area-inset-top)]">
         <Link href="/" className="flex items-center gap-[10px] text-text-primary">
-          <SutureMark />
-          <span className="font-mono text-[1rem]">Webhook&#8201;Lab</span>
+          <LabLockup />
         </Link>
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-10 md:px-6">
-        <p className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.14em] text-text-muted">
+        <p className="label-section">
           404
         </p>
         <h1 className="mt-2 text-balance font-sans text-[1.5rem] font-medium leading-snug">

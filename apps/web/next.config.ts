@@ -1,6 +1,12 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 import type { NextConfig } from 'next';
 
+// React Refresh evaluates strings in development only; production stays strict.
+const scriptSrc =
+  process.env.NODE_ENV === 'development'
+    ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+    : "script-src 'self' 'unsafe-inline'";
+
 const nextConfig: NextConfig = {
   transpilePackages: ['@webhook-lab/events', '@webhook-lab/signatures'],
 
@@ -13,7 +19,7 @@ const nextConfig: NextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline'",
+              scriptSrc,
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' fonts.gstatic.com",
               "connect-src 'self'",

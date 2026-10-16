@@ -52,7 +52,7 @@ export default function HomePage() {
           {/* Sidebar: visible on lg+ (#13 panel entry) */}
           <div
             className={cn(
-              'panel-animated hidden lg:block',
+              'panel-animated hidden lg:flex',
               !hasLoaded && 'opacity-0',
               hasLoaded && 'animate-[panelEnterLeft_250ms_ease-out_0ms_forwards]',
             )}

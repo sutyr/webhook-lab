@@ -1,6 +1,7 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LabLockup } from '@/components/suture-mark';
 
 export const metadata: Metadata = {
   title: 'Legal & Trust | Webhook Lab',
@@ -8,17 +9,7 @@ export const metadata: Metadata = {
     'How Webhook Lab handles your data, plus links to Sutyr’s privacy policy, terms of use, sub-processors, and security.',
 };
 
-function SutureMark() {
-  return (
-    <svg viewBox="0 0 100 100" width={22} height={22} aria-hidden="true">
-      <path d="M16 12L84 12L84 59.5L52.5 59.5L52.5 35.5L16 35.5Z" fill="var(--color-mark-dt)" />
-      <path d="M84 88L16 88L16 40.5L47.5 40.5L47.5 64.5L84 64.5Z" fill="var(--color-copper)" />
-    </svg>
-  );
-}
-
-const SECTION_LABEL =
-  'font-mono text-[0.69rem] font-medium uppercase tracking-[0.14em] text-text-muted';
+const SECTION_LABEL = 'label-section';
 const EXTERNAL =
   'font-mono text-[0.81rem] text-text-secondary underline decoration-border-strong underline-offset-2 transition-colors hover:text-text-primary';
 
@@ -27,9 +18,8 @@ export default function LegalPage() {
     <div className="min-h-dvh bg-surface-page text-text-primary">
       {/* Top bar */}
       <header className="flex h-[58px] items-center border-b border-border-medium bg-surface-card px-4 pt-[env(safe-area-inset-top)]">
-        <Link href="/" className="flex items-center gap-[10px] text-text-primary">
-          <SutureMark />
-          <span className="font-mono text-[1rem]">Webhook&#8201;Lab</span>
+        <Link href="/" className="flex min-w-0 items-center rounded-input" aria-label="Webhook Lab by Sutyr, home">
+          <LabLockup />
         </Link>
       </header>
 
@@ -93,7 +83,7 @@ export default function LegalPage() {
         </section>
 
         <div className="mt-12 border-t border-border pt-5 font-mono text-[0.69rem] text-text-muted">
-          <p>Effective 19 June 2026 · Sutyr Inc.</p>
+          <p>Effective 19 June 2026, Sutyr Inc.</p>
           <Link href="/" className="mt-2 inline-block text-text-tertiary underline hover:text-text-secondary">
             ← Back to Webhook Lab
           </Link>

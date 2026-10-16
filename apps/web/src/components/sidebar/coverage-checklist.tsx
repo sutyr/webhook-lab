@@ -48,7 +48,7 @@ export function CoverageChecklist() {
   return (
     <div className="border-t border-border px-3 py-2">
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-muted">
+        <span className="label-section">
           Coverage
         </span>
         <span className="font-mono text-[0.69rem] text-text-muted">

@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
-import { SutureMark } from '@/components/suture-mark';
+import { LabLockup } from '@/components/suture-mark';
 
 export default function Error({
   error,
@@ -21,13 +21,12 @@ export default function Error({
     <div className="flex min-h-dvh flex-col bg-surface-page text-text-primary">
       <header className="flex h-[58px] flex-shrink-0 items-center border-b border-border-medium bg-surface-card px-4 pt-[env(safe-area-inset-top)]">
         <Link href="/" className="flex items-center gap-[10px] text-text-primary">
-          <SutureMark />
-          <span className="font-mono text-[1rem]">Webhook&#8201;Lab</span>
+          <LabLockup />
         </Link>
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-10 md:px-6">
-        <p className="font-mono text-[0.69rem] font-medium uppercase tracking-[0.14em] text-state-error">
+        <p className="font-sans text-[0.75rem] font-medium state-error">
           500
         </p>
         <h1 className="mt-2 text-balance font-sans text-[1.5rem] font-medium leading-snug">

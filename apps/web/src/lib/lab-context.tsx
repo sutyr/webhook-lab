@@ -205,7 +205,7 @@ export function labReducer(state: LabState, action: LabAction): LabState {
         eventOptions: { ...state.eventOptions },
         timestamp: Math.floor(Date.now() / 1000),
         targetUrl: state.targetUrl,
-        configSummary: summaryParts.join(' · '),
+        configSummary: summaryParts.join(', '),
       };
       const newHistory = [historyEntry, ...state.responseHistory].slice(0, 20);
       const newTested = new Set(state.testedEventTypes);

@@ -8,27 +8,7 @@ import { useTheme } from '@/components/theme-provider';
 import { useBreadcrumbs } from '@/lib/use-breadcrumbs';
 import { useLabState, useLabDispatch } from '@/lib/lab-context';
 import { clearAll } from '@/lib/local-storage';
-
-function SutureMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 100 100"
-      width={24}
-      height={24}
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        d="M16 12L84 12L84 59.5L52.5 59.5L52.5 35.5L16 35.5Z"
-        fill="var(--color-mark-dt)"
-      />
-      <path
-        d="M84 88L16 88L16 40.5L47.5 40.5L47.5 64.5L84 64.5Z"
-        fill="var(--color-copper)"
-      />
-    </svg>
-  );
-}
+import { LabLockup } from '@/components/suture-mark';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -110,12 +90,9 @@ export function Header({ onMenuClick }: HeaderProps) {
               <Menu className="h-5 w-5" />
             </button>
           )}
-          <span className="flex-shrink-0">
-            <SutureMark />
-          </span>
-          <span className="truncate font-mono text-[1rem] text-text-primary">
-            Webhook&#8201;Lab
-          </span>
+          <a href="/" className="flex min-w-0 items-center rounded-input" aria-label="Webhook Lab by Sutyr, home">
+            <LabLockup />
+          </a>
         </div>
 
         {/* Breadcrumb or search input */}
@@ -251,7 +228,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       </nav>
       </div>
 
-      {/* Mobile search row — full-width filter below the bar (lg has its own inline search) */}
+      {/* Mobile search row: full-width filter below the bar (lg has its own inline search) */}
       {searchOpen && (
         <div className="flex items-center gap-2 border-t border-border px-4 py-2.5 lg:hidden">
           <Search size={16} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />

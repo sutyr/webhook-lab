@@ -47,7 +47,7 @@ export function HealthSummary({ results }: HealthSummaryProps) {
 
   return (
     <div className="animate-slide-down rounded-card border border-border bg-surface-card p-3 space-y-2">
-      <p className="font-sans text-[0.69rem] font-medium uppercase tracking-[0.12em] text-text-secondary">
+      <p className="label-section">
         Endpoint Health
       </p>
 
