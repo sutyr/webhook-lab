@@ -1,7 +1,7 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from 'vitest';
-import { validateTargetUrl } from '@/lib/url-validator';
+import { validateTargetUrl, isPrivateIp } from '@/lib/url-validator';
 
 describe('validateTargetUrl', () => {
   // ─── Allowed URLs ──────────────────────────────────────────────────────────
@@ -233,5 +233,21 @@ describe('validateTargetUrl', () => {
   it('allows double-encoded URL path (domain is valid)', () => {
     const r = validateTargetUrl('https://example.com/%2e%2e/webhook');
     expect(r.valid).toBe(true);
+  });
+});
+
+describe('IPv6 prefix rules apply only to IPv6 literals', () => {
+  it('allows public domains that start with fc or fd', () => {
+    expect(validateTargetUrl('https://fdic.gov/webhook').valid).toBe(true);
+    expect(validateTargetUrl('https://fcbarcelona.com/webhook').valid).toBe(true);
+    expect(isPrivateIp('fdic.gov')).toBe(false);
+    expect(isPrivateIp('fe80-cdn.example.com')).toBe(false);
+  });
+
+  it('still blocks unique local and link-local IPv6 addresses', () => {
+    expect(isPrivateIp('fd00::1')).toBe(true);
+    expect(isPrivateIp('[fc00::1]')).toBe(true);
+    expect(isPrivateIp('fe80::1')).toBe(true);
+    expect(validateTargetUrl('https://[fd12:3456::1]/webhook').valid).toBe(false);
   });
 });

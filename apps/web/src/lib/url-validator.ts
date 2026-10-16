@@ -46,9 +46,14 @@ export function isPrivateIp(hostname: string): boolean {
   // Strip brackets for IPv6
   const ip = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
 
-  // IPv6 unique local (fc00::/7) and link-local (fe80::/10)
+  // IPv6 unique local (fc00::/7) and link-local (fe80::/10). Only an IPv6
+  // literal contains a colon; without that guard, hostnames such as fdic.gov
+  // would match the prefix.
   const lower = ip.toLowerCase();
-  if (lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80:')) return true;
+  const isIpv6Literal = lower.includes(':');
+  if (isIpv6Literal && (lower.startsWith('fc') || lower.startsWith('fd') || lower.startsWith('fe80:'))) {
+    return true;
+  }
 
   // IPv4-mapped IPv6 (::ffff:x.x.x.x or ::ffff:7f00:1)
   if (lower.startsWith('::ffff:')) {
