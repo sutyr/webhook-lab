@@ -14,6 +14,7 @@ export default defineConfig({
     alias: {
       '@webhook-lab/events': path.resolve(__dirname, 'packages/events/src/index.ts'),
       '@webhook-lab/signatures': path.resolve(__dirname, 'packages/signatures/src/index.ts'),
+      '@webhook-lab/conformance': path.resolve(__dirname, 'packages/conformance/src/index.ts'),
     },
   },
 });

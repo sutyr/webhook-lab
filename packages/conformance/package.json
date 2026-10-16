@@ -1,0 +1,34 @@
+{
+  "name": "@webhook-lab/conformance",
+  "version": "0.2.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "Sutyr Inc.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sutyr/webhook-lab.git",
+    "directory": "packages/conformance"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:unit": "vitest run --config vitest.config.ts",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@webhook-lab/events": "workspace:*",
+    "@webhook-lab/signatures": "workspace:*"
+  },
+  "files": [
+    "dist"
+  ]
+}

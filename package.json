@@ -1,6 +1,7 @@
 {
   "name": "@sutyr/webhook-lab",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "A test suite for your Stripe webhook handler: signature, replay, duplicate, ordering and timing checks, plus schema-accurate signed Stripe events for your own tests.",
   "packageManager": "pnpm@10.30.3",
   "publishConfig": {
     "access": "public"
@@ -18,22 +19,33 @@
   "type": "module",
   "keywords": [
     "stripe",
+    "stripe-webhooks",
     "webhook",
+    "webhook-testing",
+    "test-suite",
+    "conformance",
+    "stripe-signature",
+    "signature-verification",
+    "idempotency",
     "testing",
+    "ci",
+    "cli",
     "events",
     "billing",
     "payment",
     "mock",
-    "sandbox",
     "typescript"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
+  },
+  "bin": {
+    "webhook-lab": "./dist/cli.js"
   },
   "files": [
     "dist"
@@ -47,6 +59,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:events": "pnpm --filter @webhook-lab/events test",
     "test:signatures": "pnpm --filter @webhook-lab/signatures test",
+    "test:conformance": "pnpm --filter @webhook-lab/conformance test",
     "build": "pnpm -r build",
     "build:pkg": "tsup"
   },
