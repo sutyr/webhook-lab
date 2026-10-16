@@ -45,7 +45,7 @@
     }
   },
   "bin": {
-    "webhook-lab": "./dist/cli.js"
+    "webhook-lab": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -62,7 +62,9 @@
     "test:signatures": "pnpm --filter @webhook-lab/signatures test",
     "test:conformance": "pnpm --filter @webhook-lab/conformance test",
     "build": "pnpm -r build",
-    "build:pkg": "tsup"
+    "build:pkg": "tsup",
+    "smoke:pkg": "node scripts/smoke-test-package.mjs",
+    "prepublishOnly": "pnpm --filter \"./packages/**\" build && pnpm build:pkg && pnpm test && pnpm smoke:pkg"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

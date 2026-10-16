@@ -50,3 +50,8 @@ jobs:
 
       - name: Test (unit + integration)
         run: pnpm test
+
+      # Packs the npm package and installs it into an empty project outside the
+      # workspace, so a packaging regression fails CI instead of a release.
+      - name: Package smoke test
+        run: pnpm build:pkg && pnpm smoke:pkg

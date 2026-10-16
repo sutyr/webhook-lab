@@ -4,7 +4,7 @@ All notable changes to Webhook Lab are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/).
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-10-16
 
 Webhook Lab becomes a test suite for your Stripe webhook handler. It checks how a handler responds to correctly signed, forged, stale, duplicate and out-of-order deliveries, ships a CLI that reaches `localhost` and CI, and covers 39 event types at Stripe API version `2026-09-30.endive`.
 

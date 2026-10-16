@@ -1,0 +1,73 @@
+name: Release
+
+# Publishes @sutyr/webhook-lab to npm when a version tag is pushed (v0.2.1,
+# v0.3.0, ...). Authentication is npm trusted publishing (OIDC): no npm token
+# is stored in this repository, and npm attaches a signed provenance
+# attestation linking each version to the run that built it.
+#
+# One-time setup, after the first version exists on npm: add this workflow as
+# the package's trusted publisher (see RELEASING.md).
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # OIDC token for trusted publishing and provenance
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Must match the environment named in the npm trusted publisher settings.
+    environment: npm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      # Trusted publishing needs Node 22.14+ and npm 11.5.1+.
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Update npm
+        run: npm install -g npm@^11.5.1
+
+      - name: Check the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json version ${version}" >&2
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm --filter "./packages/**" build
+
+      - name: Test (unit + integration)
+        run: pnpm test
+
+      - name: Build the npm package
+        run: pnpm build:pkg
+
+      - name: Package smoke test
+        run: pnpm smoke:pkg
+
+      # Everything prepublishOnly would run has just run, so skip it.
+      - name: Publish
+        run: npm publish --provenance --ignore-scripts
