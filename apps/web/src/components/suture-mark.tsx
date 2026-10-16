@@ -21,13 +21,21 @@ export function SutureMark({ size = 22, className }: { size?: number; className?
   );
 }
 
-/** The site-nav lockup: 88 by 26 at 1x, whole-pixel box as the kit specifies. */
-export function SutyrLockup({ className }: { className?: string }) {
+// The nav lockup's box is 3.385 times as wide as it is tall; its mark box is
+// 1.308 times the lockup height. The kit's nav size is 26 tall (a 34px mark).
+const LOCKUP_RATIO = 258.824 / 76.471;
+
+/**
+ * The sutyr lockup. Defaults to the kit's 88 by 26 nav size; `height` scales it.
+ * Keep the mark box at 24px or more on dark grounds (height 19 and up), where
+ * the seam closes first.
+ */
+export function SutyrLockup({ className, height = 26 }: { className?: string; height?: number }) {
   return (
     <svg
       viewBox="13.353 11.765 258.824 76.471"
-      width={88}
-      height={26}
+      width={Math.round(height * LOCKUP_RATIO)}
+      height={height}
       className={className}
       role="img"
       aria-label="Sutyr"
@@ -40,16 +48,18 @@ export function SutyrLockup({ className }: { className?: string }) {
 }
 
 /**
- * Sutyr lockup plus the product name. Below 640px the word drops and the mark
- * carries the identity alone (the kit's minimum lockup size is a 20px mark box).
+ * Sutyr lockup plus the product name, sized for a dense tool header: the
+ * lockup at the kit's dark-ground minimum (a 24px mark box) and the product
+ * name one step quieter beside it, separated by space rather than a rule, so
+ * the brand signs the bar without outweighing the work.
+ * Below 640px the word drops and the mark carries the identity alone.
  */
 export function LabLockup() {
   return (
-    <span className="flex min-w-0 items-center gap-2.5">
-      <SutyrLockup className="hidden flex-shrink-0 sm:block" />
-      <SutureMark size={24} className="flex-shrink-0 sm:hidden" />
-      <span aria-hidden="true" className="hidden h-4 w-px flex-shrink-0 bg-border-strong sm:block" />
-      <span className="truncate font-sans text-[0.875rem] font-medium tracking-[-0.01em] text-text-primary">
+    <span className="flex min-w-0 items-center gap-2">
+      <SutyrLockup height={19} className="hidden flex-shrink-0 sm:block" />
+      <SutureMark size={22} className="flex-shrink-0 sm:hidden" />
+      <span className="truncate pt-px font-sans text-[0.8125rem] font-normal leading-none text-text-secondary sm:text-text-tertiary">
         Webhook Lab
       </span>
     </span>
