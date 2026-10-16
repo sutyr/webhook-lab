@@ -9,7 +9,7 @@ describe('STRIPE_API_VERSION', () => {
   });
 
   it('matches current Stripe API version', () => {
-    expect(STRIPE_API_VERSION).toBe('2025-10-29.clover');
+    expect(STRIPE_API_VERSION).toBe('2026-09-30.endive');
   });
 });
 

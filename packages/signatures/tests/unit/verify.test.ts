@@ -23,6 +23,24 @@ describe('verify', () => {
     expect(verify(payload, header, secret)).toBe(true);
   });
 
+  it('accepts a header with multiple v1 signatures when any one matches (secret rotation)', () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    const timestamp = Math.floor(now / 1000);
+    const valid = sign(payload, secret, timestamp).split(',v1=')[1]!;
+    const stale = sign(payload, 'old_rotated_secret', timestamp).split(',v1=')[1]!;
+    expect(verify(payload, `t=${timestamp},v1=${stale},v1=${valid}`, secret)).toBe(true);
+    expect(verify(payload, `t=${timestamp},v1=${valid},v1=${stale}`, secret)).toBe(true);
+  });
+
+  it('rejects a header whose v1 signatures all fail', () => {
+    const now = Date.now();
+    vi.setSystemTime(now);
+    const timestamp = Math.floor(now / 1000);
+    const stale = sign(payload, 'old_rotated_secret', timestamp).split(',v1=')[1]!;
+    expect(verify(payload, `t=${timestamp},v1=${stale},v1=${'0'.repeat(64)}`, secret)).toBe(false);
+  });
+
   it('rejects a tampered payload', () => {
     const now = Date.now();
     vi.setSystemTime(now);

@@ -23,15 +23,17 @@ export function verify(
   const parts = header.split(',');
 
   let timestamp: string | undefined;
-  let signatureHex: string | undefined;
+  // Stripe sends one v1 entry per active secret (e.g. during secret rotation);
+  // the official SDK accepts the header if ANY v1 signature matches.
+  const signatures: string[] = [];
 
   for (const part of parts) {
     const [key, value] = part.split('=', 2);
     if (key === 't') timestamp = value;
-    if (key === 'v1') signatureHex = value;
+    if (key === 'v1' && value) signatures.push(value);
   }
 
-  if (!timestamp || !signatureHex) {
+  if (!timestamp || signatures.length === 0) {
     return false;
   }
 
@@ -48,15 +50,12 @@ export function verify(
     .update(signedPayload)
     .digest('hex');
 
-  // Constant-time comparison
-  const a = Buffer.from(signatureHex, 'hex');
-  const b = Buffer.from(expectedHex, 'hex');
-
-  if (a.length !== b.length) {
-    return false;
-  }
-
-  const signatureMatch = timingSafeEqual(a, b);
+  // Constant-time comparison against each candidate signature
+  const expected = Buffer.from(expectedHex, 'hex');
+  const signatureMatch = signatures.some((candidate) => {
+    const received = Buffer.from(candidate, 'hex');
+    return received.length === expected.length && timingSafeEqual(received, expected);
+  });
 
   // Check timestamp tolerance
   const now = Math.floor(Date.now() / 1000);

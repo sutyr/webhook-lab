@@ -96,6 +96,7 @@ export function subscriptionFailure(
         event: subscriptionDeleted({
           customerId: cusId,
           subscriptionId: subId,
+          cancellationReason: 'payment_failed',
           timestamp: timestamps[6],
         }),
         delayMs: 1000,

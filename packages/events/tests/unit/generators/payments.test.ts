@@ -63,12 +63,17 @@ describe('paymentIntentSucceeded', () => {
     const requiredKeys = [
       'id', 'object', 'amount', 'amount_capturable', 'amount_received',
       'currency', 'status', 'customer', 'payment_method', 'latest_charge',
-      'last_payment_error', 'invoice', 'description', 'metadata', 'created',
+      'last_payment_error', 'description', 'metadata', 'created',
       'livemode',
     ];
     for (const key of requiredKeys) {
       expect(pi).toHaveProperty(key);
     }
+  });
+
+  it('omits `invoice` (removed from PaymentIntent in 2025-03-31.basil)', () => {
+    const pi = paymentIntentSucceeded().data.object;
+    expect(pi).not.toHaveProperty('invoice');
   });
 });
 
@@ -138,6 +143,22 @@ describe('paymentIntentPaymentFailed', () => {
 
 // ─── chargeSucceeded ────────────────────────────────────────────────────────
 
+describe('paymentIntentPaymentFailed failed-charge linkage', () => {
+  it('latest_charge and last_payment_error.charge reference the same failed charge', () => {
+    const pi = paymentIntentPaymentFailed({ declineCode: 'insufficient_funds' }).data.object;
+    expect(pi.latest_charge).toMatch(/^ch_/);
+    expect(pi.last_payment_error!.charge).toBe(pi.latest_charge);
+  });
+
+  it('last_payment_error.doc_url points at the error code docs', () => {
+    const declined = paymentIntentPaymentFailed({ declineCode: 'insufficient_funds' }).data.object;
+    expect(declined.last_payment_error!.doc_url).toBe('https://stripe.com/docs/error-codes/card-declined');
+    const expired = paymentIntentPaymentFailed({ declineCode: 'expired_card' }).data.object;
+    expect(expired.last_payment_error!.doc_url).toBe('https://stripe.com/docs/error-codes/expired-card');
+    expect(expired.last_payment_error).not.toHaveProperty('decline_code');
+  });
+});
+
 describe('chargeSucceeded', () => {
   it('returns correct event type', () => {
     const event = chargeSucceeded();
@@ -202,19 +223,17 @@ describe('chargeSucceeded', () => {
     expect(charge.captured).toBe(false);
   });
 
-  it('refunds list is empty', () => {
+  it('omits includable-only `refunds` and removed `invoice` fields', () => {
     const charge = chargeSucceeded().data.object;
-    expect(charge.refunds.object).toBe('list');
-    expect(charge.refunds.data).toEqual([]);
-    expect(charge.refunds.has_more).toBe(false);
-    expect(charge.refunds.total_count).toBe(0);
+    expect(charge).not.toHaveProperty('refunds');
+    expect(charge).not.toHaveProperty('invoice');
   });
 
-  it('refunds.url contains the actual charge ID (no placeholder)', () => {
+  it('is paid with no failure code', () => {
     const charge = chargeSucceeded().data.object;
-    expect(charge.refunds.url).toContain(charge.id);
-    expect(charge.refunds.url).not.toContain('{CHARGE}');
-    expect(charge.refunds.url).toMatch(/^\/v1\/charges\/ch_.*\/refunds$/);
+    expect(charge.paid).toBe(true);
+    expect(charge.failure_code).toBeNull();
+    expect(charge.failure_message).toBeNull();
   });
 
   it('allows overriding card details', () => {
@@ -265,17 +284,10 @@ describe('chargeRefunded', () => {
     expect(charge.amount_refunded).toBe(charge.amount);
   });
 
-  it('refunds.data contains one refund with correct prefix', () => {
+  it('omits the refunds list (not returned by default since 2022-11-15)', () => {
     const charge = chargeRefunded().data.object;
-    expect(charge.refunds.data).toHaveLength(1);
-    expect(charge.refunds.total_count).toBe(1);
-    const refund = charge.refunds.data[0]!;
-    expect(refund.id).toMatch(/^re_/);
-    expect(refund.object).toBe('refund');
-    expect(refund.amount).toBe(charge.amount);
-    expect(refund.status).toBe('succeeded');
-    expect(refund.charge).toBe(charge.id);
-    expect(refund.currency).toBe(charge.currency);
+    expect(charge).not.toHaveProperty('refunds');
+    expect(charge.amount_refunded).toBe(charge.amount);
   });
 
   it('supports partial refund via refundAmount', () => {
@@ -283,18 +295,11 @@ describe('chargeRefunded', () => {
     expect(charge.amount).toBe(5000);
     expect(charge.amount_refunded).toBe(2000);
     expect(charge.refunded).toBe(false);
-    expect(charge.refunds.data[0]!.amount).toBe(2000);
   });
 
   it('allows overriding chargeId', () => {
     const charge = chargeRefunded({ chargeId: 'ch_custom' }).data.object;
     expect(charge.id).toBe('ch_custom');
-    expect(charge.refunds.data[0]!.charge).toBe('ch_custom');
-  });
-
-  it('refund url contains the charge id', () => {
-    const charge = chargeRefunded({ chargeId: 'ch_abc123' }).data.object;
-    expect(charge.refunds.url).toBe('/v1/charges/ch_abc123/refunds');
   });
 
   it('all required StripeCharge fields are present', () => {
@@ -302,8 +307,8 @@ describe('chargeRefunded', () => {
     const requiredKeys = [
       'id', 'object', 'amount', 'amount_captured', 'amount_refunded',
       'currency', 'status', 'customer', 'payment_intent', 'payment_method',
-      'payment_method_details', 'outcome', 'invoice', 'refunded', 'refunds',
-      'disputed', 'description', 'receipt_email', 'metadata', 'created',
+      'payment_method_details', 'outcome', 'paid', 'failure_code',
+      'failure_message', 'refunded', 'disputed', 'description', 'receipt_email', 'metadata', 'created',
       'livemode',
     ];
     for (const key of requiredKeys) {

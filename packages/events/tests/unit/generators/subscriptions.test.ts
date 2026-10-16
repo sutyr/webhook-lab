@@ -42,9 +42,18 @@ describe('subscriptionCreated', () => {
     expect(item.price.unit_amount).toBe(2000);
   });
 
-  it('current_period_end > current_period_start', () => {
+  it('items carry current_period_start/end (moved off Subscription in 2025-03-31.basil)', () => {
     const sub = subscriptionCreated().data.object;
-    expect(sub.current_period_end).toBeGreaterThan(sub.current_period_start);
+    const item = sub.items.data[0]!;
+    expect(sub).not.toHaveProperty('current_period_start');
+    expect(sub).not.toHaveProperty('current_period_end');
+    expect(item.current_period_end).toBeGreaterThan(item.current_period_start);
+  });
+
+  it('start_date equals created', () => {
+    const sub = subscriptionCreated({ timestamp: 1700000000 }).data.object;
+    expect(sub.start_date).toBe(1700000000);
+    expect(sub.created).toBe(1700000000);
   });
 
   it('has correct default cancellation and trial fields', () => {
@@ -55,11 +64,12 @@ describe('subscriptionCreated', () => {
     expect(sub.ended_at).toBeNull();
     expect(sub.trial_start).toBeNull();
     expect(sub.trial_end).toBeNull();
+    expect(sub.cancellation_details).toEqual({ comment: null, feedback: null, reason: null });
   });
 
-  it('billing_cycle_anchor equals current_period_start', () => {
+  it('billing_cycle_anchor equals the item current_period_start', () => {
     const sub = subscriptionCreated().data.object;
-    expect(sub.billing_cycle_anchor).toBe(sub.current_period_start);
+    expect(sub.billing_cycle_anchor).toBe(sub.items.data[0]!.current_period_start);
   });
 
   it('has collection_method: charge_automatically by default', () => {
@@ -132,7 +142,8 @@ describe('subscriptionUpdated', () => {
     expect(sub.id).toMatch(/^sub_/);
     expect(sub.items.object).toBe('list');
     expect(sub.items.data.length).toBeGreaterThan(0);
-    expect(sub.current_period_end).toBeGreaterThan(sub.current_period_start);
+    const item = sub.items.data[0]!;
+    expect(item.current_period_end).toBeGreaterThan(item.current_period_start);
   });
 });
 
@@ -152,6 +163,16 @@ describe('subscriptionDeleted', () => {
     const sub = subscriptionDeleted().data.object;
     expect(typeof sub.canceled_at).toBe('number');
     expect(sub.canceled_at).toBeGreaterThan(0);
+  });
+
+  it('cancellation_details.reason defaults to cancellation_requested', () => {
+    const sub = subscriptionDeleted().data.object;
+    expect(sub.cancellation_details!.reason).toBe('cancellation_requested');
+  });
+
+  it('accepts cancellationReason option', () => {
+    const sub = subscriptionDeleted({ cancellationReason: 'payment_failed' }).data.object;
+    expect(sub.cancellation_details!.reason).toBe('payment_failed');
   });
 
   it('ended_at is a number', () => {

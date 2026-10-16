@@ -3,7 +3,10 @@ import type { StripeEvent, StripeObject } from '../types/index.js';
 import { eventId } from '../utils/ids.js';
 import { now } from '../utils/timestamps.js';
 
-export const STRIPE_API_VERSION = '2025-10-29.clover';
+// Latest stable dated release. Payload shapes follow the post-basil
+// (2025-03-31) Invoice/Subscription model; dahlia (2026-03-25) and endive
+// (2026-09-30) made no breaking changes to the response fields generated here.
+export const STRIPE_API_VERSION = '2026-09-30.endive';
 
 export interface WrapInEventOptions<T> {
   timestamp?: number;

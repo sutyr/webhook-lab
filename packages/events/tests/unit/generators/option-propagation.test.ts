@@ -29,9 +29,9 @@ describe('option propagation: every option reaches the output', () => {
     expect(event.data.object.id).toBe('ch_custom789');
   });
 
-  it('subscriptionId → data.object.subscription (invoice generator)', () => {
+  it('subscriptionId → data.object.parent.subscription_details.subscription (invoice generator)', () => {
     const event = invoiceCreated({ subscriptionId: 'sub_inv123' });
-    expect(event.data.object.subscription).toBe('sub_inv123');
+    expect(event.data.object.parent!.subscription_details!.subscription).toBe('sub_inv123');
   });
 
   it('customerId → data.object.id on subscription generator (subscription object IS the customer\'s sub)', () => {

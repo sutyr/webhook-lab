@@ -29,6 +29,13 @@ function extractFieldFromSteps(
   });
 }
 
+function invoiceSubscription(preset: ScenarioPreset, step: number): string | undefined {
+  const invoice = preset.steps[step]!.event.data.object as unknown as {
+    parent?: { subscription_details?: { subscription?: string } | null } | null;
+  };
+  return invoice.parent?.subscription_details?.subscription;
+}
+
 // ─── Subscription Happy Path ────────────────────────────────────────────────
 
 describe('subscriptionHappyPath', () => {
@@ -69,17 +76,17 @@ describe('subscriptionHappyPath', () => {
     const preset = subscriptionHappyPath({ seed: 'test-happy' });
 
     // The customer.subscription.created event has the subscription as its
-    // top-level object (id field). Invoice events reference it via `subscription`.
+    // top-level object (id field). Invoice events reference it via
+    // `parent.subscription_details.subscription` (2025-03-31.basil+).
     const subCreated = preset.steps[1].event.data.object as unknown as Record<string, unknown>;
     const subCreatedId = subCreated.id as string;
     expect(subCreatedId).toMatch(/^sub_/);
 
-    const subIds = extractFieldFromSteps(preset, 'subscription');
     // invoice.created (2), invoice.paid (5), invoice.payment_succeeded (6)
     // must reference the SAME subscription as the customer.subscription.created event
-    expect(subIds[2]).toBe(subCreatedId);
-    expect(subIds[5]).toBe(subCreatedId);
-    expect(subIds[6]).toBe(subCreatedId);
+    expect(invoiceSubscription(preset, 2)).toBe(subCreatedId);
+    expect(invoiceSubscription(preset, 5)).toBe(subCreatedId);
+    expect(invoiceSubscription(preset, 6)).toBe(subCreatedId);
   });
 
   it('uses ONE invoice ID across the invoice lifecycle (created → paid → payment_succeeded)', () => {
@@ -94,19 +101,18 @@ describe('subscriptionHappyPath', () => {
     expect(obj(6).id).toBe(inIdValue);
   });
 
-  it('correlates invoice.payment_intent with the payment_intent.succeeded event', () => {
-    // The PaymentIntent that pays the invoice must be the same one that the
-    // charge references and that fires payment_intent.succeeded.
+  it('correlates charge.payment_intent with the payment_intent.succeeded event; invoices carry no payment_intent', () => {
+    // Since 2025-03-31.basil the Invoice has no `payment_intent` field (payments
+    // are includable-only via `payments`), so only the charge carries the PI ID.
     const preset = subscriptionHappyPath({ seed: 'test-happy' });
     const obj = (i: number) =>
       preset.steps[i].event.data.object as unknown as Record<string, unknown>;
     const piIdValue = obj(4).id as string;
     expect(piIdValue).toMatch(/^pi_/);
-    // charge.succeeded.payment_intent and all three invoices must reference it
     expect(obj(3).payment_intent).toBe(piIdValue);
-    expect(obj(2).payment_intent).toBe(piIdValue);
-    expect(obj(5).payment_intent).toBe(piIdValue);
-    expect(obj(6).payment_intent).toBe(piIdValue);
+    for (const i of [2, 5, 6]) {
+      expect(obj(i)).not.toHaveProperty('payment_intent');
+    }
   });
 
   it('charge.succeeded and payment_intent.succeeded share same charge and PI IDs', () => {
@@ -195,11 +201,10 @@ describe('subscriptionFailure', () => {
 
   it('shares subscription IDs across ALL subscription-related steps', () => {
     const preset = subscriptionFailure({ seed: 'test-failure' });
-    const subIds = extractFieldFromSteps(preset, 'subscription');
-    const sharedSubId = subIds[0];
+    const sharedSubId = invoiceSubscription(preset, 0);
     expect(sharedSubId).toMatch(/^sub_/);
-    expect(subIds[1]).toBe(sharedSubId);
-    expect(subIds[4]).toBe(sharedSubId);
+    expect(invoiceSubscription(preset, 1)).toBe(sharedSubId);
+    expect(invoiceSubscription(preset, 4)).toBe(sharedSubId);
 
     // Step 3 (customer.subscription.updated) and step 6 (customer.subscription.deleted)
     // carry the subscription as the top-level data.object — verify their `id` matches.
@@ -542,9 +547,11 @@ describe('subscriptionHappyPath field-level correctness', () => {
     expect(obj(2).status).toBe('draft');
   });
 
-  it('invoice.paid has status paid and paid: true', () => {
+  it('invoice.paid has status paid and status_transitions.paid_at set', () => {
     expect(obj(5).status).toBe('paid');
-    expect(obj(5).paid).toBe(true);
+    const transitions = obj(5).status_transitions as Record<string, unknown>;
+    expect(typeof transitions.paid_at).toBe('number');
+    expect(obj(5)).not.toHaveProperty('paid');
   });
 
   it('charge.succeeded has captured: true', () => {
@@ -574,6 +581,14 @@ describe('subscriptionHappyPath field-level correctness', () => {
 describe('subscriptionFailure field-level correctness', () => {
   const preset = subscriptionFailure({ seed: 'field-test' });
   const obj = (i: number) => preset.steps[i].event.data.object as unknown as Record<string, unknown>;
+
+  it('customer.subscription.deleted carries cancellation_details.reason payment_failed', () => {
+    const preset = subscriptionFailure();
+    const sub = preset.steps[6]!.event.data.object as unknown as {
+      cancellation_details: { reason: string | null } | null;
+    };
+    expect(sub.cancellation_details!.reason).toBe('payment_failed');
+  });
 
   it('payment_intent.payment_failed has status requires_payment_method', () => {
     expect(obj(2).status).toBe('requires_payment_method');

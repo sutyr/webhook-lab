@@ -165,6 +165,12 @@ const subscriptionIdField: FieldDef = {
   jsonPath: 'data.object.subscription',
 };
 
+// Since 2025-03-31.basil the invoice links its subscription through `parent`.
+const invoiceSubscriptionIdField: FieldDef = {
+  ...subscriptionIdField,
+  jsonPath: 'data.object.parent.subscription_details.subscription',
+};
+
 const paymentMethodIdField: FieldDef = {
   key: 'paymentMethodId',
   label: 'Payment method ID',
@@ -200,7 +206,7 @@ const apiVersionField: FieldDef = {
   mono: true,
   description: 'Changes the version string on the event envelope. Payload structure reflects the current API version.',
   section: 'event-options',
-  placeholder: '2025-10-29.clover',
+  placeholder: '2026-09-30.endive',
   jsonPath: 'api_version',
 };
 
@@ -263,7 +269,7 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
       type: 'number',
       defaultValue: '',
       mono: true,
-      jsonPath: 'data.object.refunds.data.0.amount',
+      jsonPath: 'data.object.amount_refunded',
     },
     customerIdField,
     paymentIntentIdField,
@@ -281,13 +287,13 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
       jsonPath: 'data.object.billing_reason',
     },
     customerIdField,
-    subscriptionIdField,
+    invoiceSubscriptionIdField,
   ],
   'invoice.paid': [
     amountField,
     currencyField,
     customerIdField,
-    subscriptionIdField,
+    invoiceSubscriptionIdField,
   ],
   'invoice.payment_failed': [
     amountField,
@@ -301,13 +307,13 @@ export const EVENT_FIELDS: Partial<Record<StripeEventType, FieldDef[]>> = {
       jsonPath: 'data.object.attempt_count',
     },
     customerIdField,
-    subscriptionIdField,
+    invoiceSubscriptionIdField,
   ],
   'invoice.payment_succeeded': [
     amountField,
     currencyField,
     customerIdField,
-    subscriptionIdField,
+    invoiceSubscriptionIdField,
   ],
   'customer.subscription.created': [
     {

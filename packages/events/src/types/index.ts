@@ -42,6 +42,7 @@ export interface StripePaymentError {
   type: 'card_error' | 'invalid_request_error' | 'api_error';
   code: string;
   decline_code?: string;
+  doc_url: string;
   message: string;
   payment_method?: {
     id: string;
@@ -71,7 +72,6 @@ export interface StripePaymentIntent extends StripeObject {
   payment_method: string | null;
   latest_charge: string | null;
   last_payment_error: StripePaymentError | null;
-  invoice: string | null;
   description: string | null;
   metadata: Record<string, string>;
   created: number;
@@ -114,9 +114,15 @@ export interface StripeCharge extends StripeObject {
     card?: StripeCardDetails;
   };
   outcome: StripeChargeOutcome | null;
-  invoice: string | null;
+  paid: boolean;
+  failure_code: string | null;
+  failure_message: string | null;
   refunded: boolean;
-  refunds: StripeList<StripeRefund>;
+  /**
+   * Includable only (not returned by default since 2022-11-15), so absent from
+   * webhook payloads. Kept optional for consumers that model expanded charges.
+   */
+  refunds?: StripeList<StripeRefund>;
   disputed: boolean;
   description: string | null;
   receipt_email: string | null;
@@ -140,48 +146,100 @@ export interface StripeRefund extends StripeObject {
 
 // ─── Invoice ─────────────────────────────────────────────────────────────────
 
+export interface StripeInvoiceLineItemProrationDetails {
+  credited_items: { invoice: string; invoice_line_items: string[] } | null;
+}
+
+export interface StripeInvoiceLineItemParent {
+  type: 'invoice_item_details' | 'subscription_item_details';
+  invoice_item_details: {
+    invoice_item: string;
+    proration: boolean;
+    proration_details: StripeInvoiceLineItemProrationDetails | null;
+    subscription: string | null;
+  } | null;
+  subscription_item_details: {
+    invoice_item: string | null;
+    proration: boolean;
+    proration_details: StripeInvoiceLineItemProrationDetails | null;
+    subscription: string | null;
+    subscription_item: string;
+  } | null;
+}
+
 export interface StripeInvoiceLineItem extends StripeObject {
   object: 'line_item';
   amount: number;
   currency: string;
   description: string | null;
-  price: StripePrice;
-  quantity: number;
-  subscription: string | null;
-  subscription_item: string | null;
-  type: 'invoiceitem' | 'subscription';
+  discount_amounts: unknown[];
+  discountable: boolean;
+  discounts: string[];
+  invoice: string | null;
+  livemode: false;
+  metadata: Record<string, string>;
+  parent: StripeInvoiceLineItemParent | null;
   period: {
     start: number;
     end: number;
   };
+  pricing: {
+    type: 'price_details';
+    price_details: { price: string; product: string };
+    unit_amount_decimal: string | null;
+  } | null;
+  quantity: number | null;
+  subtotal: number;
+  taxes: unknown[];
+}
+
+export interface StripeInvoiceParent {
+  type: 'quote_details' | 'subscription_details';
+  quote_details: { quote: string } | null;
+  subscription_details: {
+    metadata: Record<string, string> | null;
+    subscription: string;
+    subscription_proration_date?: number | null;
+  } | null;
 }
 
 export interface StripeInvoice extends StripeObject {
   object: 'invoice';
-  number: string;
-  paid: boolean;
+  number: string | null;
   status: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible';
   amount_due: number;
+  amount_overpaid: number;
   amount_paid: number;
   amount_remaining: number;
   attempt_count: number;
   attempted: boolean;
   next_payment_attempt: number | null;
-  subscription: string | null;
-  payment_intent: string | null;
+  parent: StripeInvoiceParent | null;
   customer: string;
   collection_method: 'charge_automatically' | 'send_invoice';
   billing_reason:
-    | 'subscription_create'
-    | 'subscription_cycle'
-    | 'subscription_update'
-    | 'subscription_threshold'
-    | 'upcoming'
+    | 'automatic_pending_invoice_item_invoice'
     | 'manual'
     | 'quote_accept'
+    | 'subscription'
+    | 'subscription_create'
+    | 'subscription_cycle'
+    | 'subscription_threshold'
+    | 'subscription_update'
+    | 'upcoming'
     | null;
   currency: string;
   lines: StripeList<StripeInvoiceLineItem>;
+  period_start: number;
+  period_end: number;
+  status_transitions: {
+    finalized_at: number | null;
+    marked_uncollectible_at: number | null;
+    paid_at: number | null;
+    voided_at: number | null;
+  };
+  subtotal: number;
+  total: number;
   hosted_invoice_url: string | null;
   invoice_pdf: string | null;
   metadata: Record<string, string>;
@@ -213,11 +271,21 @@ export interface StripePrice extends StripeObject {
 
 export interface StripeSubscriptionItem extends StripeObject {
   object: 'subscription_item';
+  created: number;
+  // Moved here from Subscription in 2025-03-31.basil
+  current_period_start: number;
+  current_period_end: number;
+  metadata: Record<string, string>;
   price: StripePrice;
   quantity: number;
   subscription: string;
-  created: number;
 }
+
+export type StripeSubscriptionCancellationReason =
+  | 'canceled_by_retention_policy'
+  | 'cancellation_requested'
+  | 'payment_disputed'
+  | 'payment_failed';
 
 export interface StripeSubscription extends StripeObject {
   object: 'subscription';
@@ -234,15 +302,19 @@ export interface StripeSubscription extends StripeObject {
     | 'paused';
   customer: string;
   items: StripeList<StripeSubscriptionItem>;
-  current_period_start: number;
-  current_period_end: number;
   billing_cycle_anchor: number;
   latest_invoice: string | null;
   default_payment_method: string | null;
   cancel_at_period_end: boolean;
   cancel_at: number | null;
   canceled_at: number | null;
+  cancellation_details: {
+    comment: string | null;
+    feedback: string | null;
+    reason: StripeSubscriptionCancellationReason | null;
+  } | null;
   ended_at: number | null;
+  start_date: number;
   trial_start: number | null;
   trial_end: number | null;
   metadata: Record<string, string>;
@@ -324,7 +396,8 @@ export interface StripeDispute extends StripeObject {
     | 'needs_response'
     | 'under_review'
     | 'won'
-    | 'lost';
+    | 'lost'
+    | 'prevented';
   is_charge_refundable: boolean;
   evidence_details: {
     due_by: number | null;
@@ -464,6 +537,7 @@ export interface InvoiceCreatedOptions extends BaseEventOptions {
   customerId?: string;
   subscriptionId?: string;
   invoiceId?: string;
+  /** @deprecated Ignored. Invoice has no `payment_intent` field since 2025-03-31.basil. */
   paymentIntentId?: string;
   billingReason?: 'subscription_create' | 'subscription_cycle' | 'subscription_update' | 'subscription_threshold' | 'upcoming' | 'manual' | 'quote_accept';
 }
@@ -474,6 +548,7 @@ export interface InvoicePaidOptions extends BaseEventOptions {
   customerId?: string;
   subscriptionId?: string;
   invoiceId?: string;
+  /** @deprecated Ignored. Invoice has no `payment_intent` field since 2025-03-31.basil. */
   paymentIntentId?: string;
 }
 
@@ -483,6 +558,7 @@ export interface InvoicePaymentFailedOptions extends BaseEventOptions {
   customerId?: string;
   subscriptionId?: string;
   invoiceId?: string;
+  /** @deprecated Ignored. Invoice has no `payment_intent` field since 2025-03-31.basil. */
   paymentIntentId?: string;
   attemptCount?: number;
 }
@@ -493,6 +569,7 @@ export interface InvoicePaymentSucceededOptions extends BaseEventOptions {
   customerId?: string;
   subscriptionId?: string;
   invoiceId?: string;
+  /** @deprecated Ignored. Invoice has no `payment_intent` field since 2025-03-31.basil. */
   paymentIntentId?: string;
 }
 
@@ -518,6 +595,7 @@ export interface SubscriptionUpdatedOptions extends BaseEventOptions {
 
 export interface SubscriptionDeletedOptions extends BaseEventOptions {
   customerId?: string;
+  cancellationReason?: StripeSubscriptionCancellationReason;
   subscriptionId?: string;
   collectionMethod?: 'charge_automatically' | 'send_invoice';
   currency?: string;

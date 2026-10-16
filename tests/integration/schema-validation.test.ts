@@ -235,10 +235,10 @@ describe('schema validation: all 18 generators', () => {
 });
 
 describe('schema validation: timestamp-specific checks', () => {
-  it('subscription has current_period_end > current_period_start', () => {
+  it('subscription items have current_period_end > current_period_start', () => {
     const event = subscriptionCreated();
-    const sub = event.data.object as Record<string, unknown>;
-    expect(sub.current_period_end).toBeGreaterThan(sub.current_period_start as number);
+    const item = event.data.object.items.data[0]!;
+    expect(item.current_period_end).toBeGreaterThan(item.current_period_start);
   });
 
   it('invoice.payment_failed has future next_payment_attempt', () => {
@@ -292,7 +292,7 @@ describe('schema validation: Stripe enum values', () => {
 
   const VALID_DISPUTE_STATUSES = new Set([
     'warning_needs_response', 'warning_under_review', 'warning_closed',
-    'needs_response', 'under_review', 'won', 'lost',
+    'needs_response', 'under_review', 'won', 'lost', 'prevented',
   ]);
 
   const VALID_CHECKOUT_STATUSES = new Set(['open', 'complete', 'expired']);
@@ -375,5 +375,48 @@ describe('schema validation: Stripe enum values', () => {
     const event = checkoutSessionExpired();
     const obj = event.data.object as Record<string, unknown>;
     expect(VALID_CHECKOUT_STATUSES.has(obj.status as string)).toBe(true);
+  });
+});
+
+// Fields removed or made includable-only by Stripe API versions at or before
+// the stamped api_version. Their presence would mean the payload claims a
+// version it does not match.
+describe('schema validation: payloads match the stamped api_version', () => {
+  const ABSENT_FIELDS: [string, () => StripeEvent, string[]][] = [
+    // 2025-03-31.basil: Invoice payment/subscription fields moved
+    ['invoice.created', () => invoiceCreated(), ['paid', 'paid_out_of_band', 'subscription', 'payment_intent', 'charge', 'payments']],
+    ['invoice.paid', () => invoicePaid(), ['paid', 'paid_out_of_band', 'subscription', 'payment_intent', 'charge', 'payments']],
+    ['invoice.payment_failed', () => invoicePaymentFailed(), ['paid', 'paid_out_of_band', 'subscription', 'payment_intent', 'charge', 'payments']],
+    ['invoice.payment_succeeded', () => invoicePaymentSucceeded(), ['paid', 'paid_out_of_band', 'subscription', 'payment_intent', 'charge', 'payments']],
+    // 2025-03-31.basil: current_period_* moved to subscription items
+    ['customer.subscription.created', () => subscriptionCreated(), ['current_period_start', 'current_period_end']],
+    ['customer.subscription.updated', () => subscriptionUpdated(), ['current_period_start', 'current_period_end']],
+    ['customer.subscription.deleted', () => subscriptionDeleted(), ['current_period_start', 'current_period_end']],
+    // 2025-03-31.basil: invoice removed from PaymentIntent and Charge;
+    // 2022-11-15: Charge.refunds no longer returned by default
+    ['payment_intent.succeeded', () => paymentIntentSucceeded(), ['invoice']],
+    ['payment_intent.payment_failed', () => paymentIntentPaymentFailed(), ['invoice']],
+    ['charge.succeeded', () => chargeSucceeded(), ['invoice', 'refunds']],
+    ['charge.refunded', () => chargeRefunded(), ['invoice', 'refunds']],
+  ];
+
+  for (const [type, gen, fields] of ABSENT_FIELDS) {
+    it(`${type} omits ${fields.join(', ')}`, () => {
+      const obj = gen().data.object as unknown as Record<string, unknown>;
+      for (const field of fields) {
+        expect(obj, `${type} should not contain ${field}`).not.toHaveProperty(field);
+      }
+    });
+  }
+
+  it('invoice line items use pricing.price_details and parent, not price/type/subscription', () => {
+    for (const gen of [invoiceCreated, invoicePaid, invoicePaymentFailed, invoicePaymentSucceeded]) {
+      const line = gen().data.object.lines.data[0]! as unknown as Record<string, unknown>;
+      for (const field of ['price', 'plan', 'type', 'subscription', 'subscription_item', 'proration']) {
+        expect(line).not.toHaveProperty(field);
+      }
+      expect(line).toHaveProperty('pricing.price_details.price');
+      expect(line).toHaveProperty('parent.subscription_item_details.subscription_item');
+    }
   });
 });

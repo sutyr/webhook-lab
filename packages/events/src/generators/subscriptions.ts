@@ -47,25 +47,32 @@ function buildPrice(options?: {
   };
 }
 
+// Since 2025-03-31.basil, current_period_start/end live on each subscription
+// item, not on the Subscription itself.
 function buildSubscriptionItem(
   subId: string,
   price: StripePrice,
+  periodStart: number,
 ): StripeSubscriptionItem {
   return {
     id: subscriptionItemId(),
     object: 'subscription_item',
+    created: periodStart,
+    current_period_start: periodStart,
+    current_period_end: periodStart + 30 * 86400,
+    metadata: {},
     price,
     quantity: 1,
     subscription: subId,
-    created: now(),
   };
 }
 
 function buildItemsList(
   subId: string,
   price: StripePrice,
+  periodStart: number = now(),
 ): StripeList<StripeSubscriptionItem> {
-  const item = buildSubscriptionItem(subId, price);
+  const item = buildSubscriptionItem(subId, price, periodStart);
   return {
     object: 'list',
     data: [item],
@@ -89,15 +96,15 @@ function buildSubscription(
     status: 'active',
     customer: customerId(),
     items,
-    current_period_start: timestamp,
-    current_period_end: timestamp + 30 * 86400,
     billing_cycle_anchor: timestamp,
     latest_invoice: invoiceId(),
     default_payment_method: paymentMethodId(),
     cancel_at_period_end: false,
     cancel_at: null,
     canceled_at: null,
+    cancellation_details: { comment: null, feedback: null, reason: null },
     ended_at: null,
+    start_date: overrides.created ?? timestamp,
     trial_start: null,
     trial_end: null,
     metadata: {},
@@ -119,7 +126,7 @@ export function subscriptionCreated(
     currency: options?.currency,
     interval: options?.interval,
   });
-  const items = buildItemsList(subId, price);
+  const items = buildItemsList(subId, price, timestamp);
 
   const subscription = buildSubscription({
     id: subId,
@@ -128,8 +135,6 @@ export function subscriptionCreated(
     status: options?.status ?? 'active',
     customer: options?.customerId ?? customerId(),
     items,
-    current_period_start: timestamp,
-    current_period_end: timestamp + 30 * 86400,
     billing_cycle_anchor: timestamp,
     metadata: options?.metadata ?? {},
     created: timestamp,
@@ -146,7 +151,7 @@ export function subscriptionUpdated(
   const subId = options?.subscriptionId ?? subscriptionId();
   const timestamp = options?.timestamp ?? now();
   const price = buildPrice();
-  const items = buildItemsList(subId, price);
+  const items = buildItemsList(subId, price, timestamp);
 
   const newStatus = options?.status ?? 'past_due';
   const previousStatus = options?.previousStatus ?? 'active';
@@ -159,6 +164,7 @@ export function subscriptionUpdated(
     customer: options?.customerId ?? customerId(),
     items,
     cancel_at_period_end: options?.cancelAtPeriodEnd ?? false,
+    billing_cycle_anchor: timestamp,
     metadata: options?.metadata ?? {},
     created: timestamp,
   });
@@ -175,7 +181,7 @@ export function subscriptionDeleted(
   const subId = options?.subscriptionId ?? subscriptionId();
   const timestamp = options?.timestamp ?? now();
   const price = buildPrice();
-  const items = buildItemsList(subId, price);
+  const items = buildItemsList(subId, price, timestamp);
 
   const subscription = buildSubscription({
     id: subId,
@@ -184,7 +190,13 @@ export function subscriptionDeleted(
     status: 'canceled',
     customer: options?.customerId ?? customerId(),
     items,
+    billing_cycle_anchor: timestamp,
     canceled_at: timestamp,
+    cancellation_details: {
+      comment: null,
+      feedback: null,
+      reason: options?.cancellationReason ?? 'cancellation_requested',
+    },
     ended_at: timestamp,
     metadata: options?.metadata ?? {},
     created: timestamp,

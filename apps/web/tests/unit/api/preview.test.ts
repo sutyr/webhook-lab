@@ -103,7 +103,7 @@ describe('POST /api/preview', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(data.api_version).toBe('2025-10-29.clover');
+    expect(data.api_version).toBe('2026-09-30.endive');
   });
 
   it('custom apiVersion overrides api_version on envelope', async () => {
@@ -127,7 +127,7 @@ describe('POST /api/preview', () => {
     const response = await POST(request);
     const data = await response.json();
 
-    expect(data.api_version).toBe('2025-10-29.clover');
+    expect(data.api_version).toBe('2026-09-30.endive');
   });
 
   // ─── All 18 event types ──────────────────────────────────────────────────

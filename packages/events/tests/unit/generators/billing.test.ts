@@ -51,14 +51,41 @@ describe('invoiceCreated', () => {
     expect(inv.collection_method).toBe('charge_automatically');
   });
 
-  it('has number field matching INV- pattern', () => {
+  it('has number: null (numbers are assigned at finalization)', () => {
     const inv = invoiceObject(invoiceCreated());
-    expect(inv.number).toMatch(/^INV-\d+/);
+    expect(inv.number).toBeNull();
   });
 
-  it('has paid: false (draft invoices are not paid)', () => {
+  it('finalized invoices have a number matching INV- pattern', () => {
+    expect(invoiceObject(invoicePaid()).number).toMatch(/^INV-\d+/);
+    expect(invoiceObject(invoicePaymentFailed()).number).toMatch(/^INV-\d+/);
+  });
+
+  it('omits fields removed in 2025-03-31.basil (paid, subscription, payment_intent, charge)', () => {
+    const inv = invoiceObject(invoiceCreated()) as unknown as Record<string, unknown>;
+    expect(inv).not.toHaveProperty('paid');
+    expect(inv).not.toHaveProperty('subscription');
+    expect(inv).not.toHaveProperty('payment_intent');
+    expect(inv).not.toHaveProperty('charge');
+  });
+
+  it('omits includable-only payments list from the webhook payload', () => {
+    const inv = invoiceObject(invoiceCreated()) as unknown as Record<string, unknown>;
+    expect(inv).not.toHaveProperty('payments');
+  });
+
+  it('references the subscription via parent.subscription_details', () => {
+    const inv = invoiceObject(invoiceCreated({ subscriptionId: 'sub_parent123' }));
+    expect(inv.parent).not.toBeNull();
+    expect(inv.parent!.type).toBe('subscription_details');
+    expect(inv.parent!.quote_details).toBeNull();
+    expect(inv.parent!.subscription_details!.subscription).toBe('sub_parent123');
+  });
+
+  it('draft invoice has no finalized_at or paid_at', () => {
     const inv = invoiceObject(invoiceCreated());
-    expect(inv.paid).toBe(false);
+    expect(inv.status_transitions.finalized_at).toBeNull();
+    expect(inv.status_transitions.paid_at).toBeNull();
   });
 
   it('defaults amount_due to 2999, amount_paid to 0, amount_remaining equals amount_due', () => {
@@ -89,16 +116,29 @@ describe('invoiceCreated', () => {
     expect(inv.lines.data).toHaveLength(1);
   });
 
-  it('line item has a price with recurring', () => {
-    const line = invoiceObject(invoiceCreated()).lines.data[0]!;
+  it('line item references price via pricing.price_details (basil shape)', () => {
+    const line = invoiceObject(invoiceCreated({ amount: 4200 })).lines.data[0]!;
     expect(line.object).toBe('line_item');
     expect(line.id).toMatch(/^il_/);
-    expect(line.price.object).toBe('price');
-    expect(line.price.id).toMatch(/^price_/);
-    expect(line.price.recurring).not.toBeNull();
-    expect(line.price.recurring!.interval).toBe('month');
-    expect(line.price.recurring!.interval_count).toBe(1);
-    expect(line.price.type).toBe('recurring');
+    expect(line).not.toHaveProperty('price');
+    expect(line).not.toHaveProperty('type');
+    expect(line).not.toHaveProperty('subscription');
+    expect(line.pricing).not.toBeNull();
+    expect(line.pricing!.type).toBe('price_details');
+    expect(line.pricing!.price_details.price).toMatch(/^price_/);
+    expect(line.pricing!.price_details.product).toMatch(/^prod_/);
+    expect(line.pricing!.unit_amount_decimal).toBe('4200');
+  });
+
+  it('line item parent is subscription_item_details linked to the invoice subscription', () => {
+    const inv = invoiceObject(invoiceCreated({ subscriptionId: 'sub_line123' }));
+    const line = inv.lines.data[0]!;
+    expect(line.invoice).toBe(inv.id);
+    expect(line.parent!.type).toBe('subscription_item_details');
+    expect(line.parent!.invoice_item_details).toBeNull();
+    expect(line.parent!.subscription_item_details!.subscription).toBe('sub_line123');
+    expect(line.parent!.subscription_item_details!.subscription_item).toMatch(/^si_/);
+    expect(line.parent!.subscription_item_details!.proration).toBe(false);
   });
 });
 
@@ -124,9 +164,11 @@ describe('invoicePaid', () => {
     expect(inv.attempted).toBe(true);
   });
 
-  it('has paid: true', () => {
-    const inv = invoiceObject(invoicePaid());
-    expect(inv.paid).toBe(true);
+  it('records paid_at and finalized_at in status_transitions', () => {
+    const inv = invoiceObject(invoicePaid({ timestamp: 1700000000 }));
+    expect(inv.status_transitions.paid_at).toBe(1700000000);
+    expect(inv.status_transitions.finalized_at).toBe(1700000000);
+    expect(inv).not.toHaveProperty('paid');
   });
 
   it('invoice object has correct structure', () => {
@@ -134,7 +176,7 @@ describe('invoicePaid', () => {
     expect(inv.object).toBe('invoice');
     expect(inv.id).toMatch(/^in_/);
     expect(inv.lines.data).toHaveLength(1);
-    expect(inv.lines.data[0]!.price.recurring).not.toBeNull();
+    expect(inv.lines.data[0]!.pricing!.price_details.price).toMatch(/^price_/);
   });
 });
 
@@ -171,9 +213,11 @@ describe('invoicePaymentFailed', () => {
     expect(inv.next_payment_attempt!).toBeGreaterThan(Math.floor(Date.now() / 1000));
   });
 
-  it('has paid: false', () => {
-    const inv = invoiceObject(invoicePaymentFailed());
-    expect(inv.paid).toBe(false);
+  it('is finalized but has no paid_at', () => {
+    const inv = invoiceObject(invoicePaymentFailed({ timestamp: 1700000000 }));
+    expect(inv.status_transitions.finalized_at).toBe(1700000000);
+    expect(inv.status_transitions.paid_at).toBeNull();
+    expect(inv).not.toHaveProperty('paid');
   });
 
   it('CRITICAL: payload does NOT contain decline_code anywhere', () => {
@@ -188,7 +232,7 @@ describe('invoicePaymentFailed', () => {
     expect(inv.id).toMatch(/^in_/);
     expect(inv.lines.object).toBe('list');
     expect(inv.lines.data).toHaveLength(1);
-    expect(inv.lines.data[0]!.price.recurring).not.toBeNull();
+    expect(inv.lines.data[0]!.pricing!.type).toBe('price_details');
   });
 
   it('accepts custom currency', () => {
@@ -225,20 +269,20 @@ describe('invoicePaymentSucceeded', () => {
     expect(inv.object).toBe('invoice');
     expect(inv.id).toMatch(/^in_/);
     expect(inv.customer).toMatch(/^cus_/);
-    expect(inv.subscription).toMatch(/^sub_/);
-    expect(inv.payment_intent).toMatch(/^pi_/);
+    expect(inv.parent!.subscription_details!.subscription).toMatch(/^sub_/);
+    expect(inv).not.toHaveProperty('payment_intent');
     expect(inv.lines.object).toBe('list');
     expect(inv.lines.data).toHaveLength(1);
-    expect(inv.lines.data[0]!.price.recurring).not.toBeNull();
+    expect(inv.lines.data[0]!.pricing!.price_details.price).toMatch(/^price_/);
   });
 });
 
 describe('billing edge cases', () => {
-  it('invoicePaid with amount: 0 has paid: true (trial invoice)', () => {
+  it('invoicePaid with amount: 0 has status paid (trial invoice)', () => {
     const inv = invoiceObject(invoicePaid({ amount: 0 }));
     expect(inv.amount_due).toBe(0);
     expect(inv.amount_paid).toBe(0);
-    expect(inv.paid).toBe(true);
+    expect(inv.status).toBe('paid');
   });
 
   it('invoicePaymentFailed with attemptCount: 0 is accepted', () => {

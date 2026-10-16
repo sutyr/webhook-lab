@@ -2,7 +2,6 @@
 import type {
   StripePaymentIntent,
   StripeCharge,
-  StripeRefund,
   PaymentIntentSucceededOptions,
   PaymentIntentFailedOptions,
   ChargeSucceededOptions,
@@ -18,7 +17,6 @@ import {
   chargeId,
   customerId,
   paymentMethodId,
-  refundId,
 } from '../utils/ids.js';
 import { now } from '../utils/timestamps.js';
 
@@ -48,7 +46,6 @@ export function paymentIntentSucceeded(
     payment_method: pmId,
     latest_charge: chId,
     last_payment_error: null,
-    invoice: null,
     description: null,
     metadata: options?.metadata ?? {},
     created: ts,
@@ -68,6 +65,9 @@ export function paymentIntentPaymentFailed(
   const ts = options?.timestamp ?? now();
   const cusId = options?.customerId ?? customerId();
   const pmId = options?.paymentMethodId ?? paymentMethodId();
+  // Card errors are raised by a failed Charge, so both latest_charge and
+  // last_payment_error.charge reference it.
+  const failedChargeId = chargeId();
   const declineKey = options?.declineCode ?? 'generic_decline';
   const entry = DECLINE_CODE_MAP[declineKey];
 
@@ -80,13 +80,14 @@ export function paymentIntentPaymentFailed(
   const error: StripePaymentError = {
     type: entry.type,
     code: entry.code,
+    doc_url: `https://stripe.com/docs/error-codes/${entry.code.replace(/_/g, '-')}`,
     message: entry.message,
     payment_method: {
       id: pmId,
       object: 'payment_method',
       type: 'card',
     },
-    charge: null,
+    charge: failedChargeId,
   };
 
   if (entry.decline_code !== undefined) {
@@ -105,9 +106,8 @@ export function paymentIntentPaymentFailed(
     status: 'requires_payment_method',
     customer: cusId,
     payment_method: pmId,
-    latest_charge: null,
+    latest_charge: failedChargeId,
     last_payment_error: error,
-    invoice: null,
     description: null,
     metadata: options?.metadata ?? {},
     created: ts,
@@ -162,15 +162,10 @@ export function chargeSucceeded(
       risk_score: 32,
       seller_message: 'Payment complete.',
     },
-    invoice: null,
+    paid: true,
+    failure_code: null,
+    failure_message: null,
     refunded: false,
-    refunds: {
-      object: 'list',
-      data: [],
-      has_more: false,
-      total_count: 0,
-      url: `/v1/charges/${chId}/refunds`,
-    },
     disputed: false,
     description: null,
     receipt_email: null,
@@ -196,18 +191,8 @@ export function chargeRefunded(
   const pmId = paymentMethodId();
   const refAmount = options?.refundAmount ?? amount;
 
-  const refund: StripeRefund = {
-    id: refundId(),
-    object: 'refund',
-    amount: refAmount,
-    status: 'succeeded',
-    charge: chId,
-    payment_intent: piId,
-    currency,
-    reason: null,
-    created: ts,
-  };
-
+  // `refunds` is includable only (not returned by default since 2022-11-15),
+  // so the webhook payload carries the refund total in `amount_refunded` alone.
   const charge: StripeCharge = {
     id: chId,
     object: 'charge',
@@ -239,15 +224,10 @@ export function chargeRefunded(
       risk_score: 32,
       seller_message: 'Payment complete.',
     },
-    invoice: null,
+    paid: true,
+    failure_code: null,
+    failure_message: null,
     refunded: refAmount >= amount,
-    refunds: {
-      object: 'list',
-      data: [refund],
-      has_more: false,
-      total_count: 1,
-      url: `/v1/charges/${chId}/refunds`,
-    },
     disputed: false,
     description: null,
     receipt_email: null,
