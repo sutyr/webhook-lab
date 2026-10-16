@@ -35,6 +35,19 @@ describe('POST /api/preview', () => {
     expect(data.error.message).toBe('Unknown event type');
   });
 
+  it('returns 400 INVALID_EVENT_OPTIONS when an option value is not valid for the event', async () => {
+    const request = makeRequest({
+      eventType: 'payment_intent.payment_failed',
+      eventOptions: { declineCode: 'bogus' },
+    });
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error.code).toBe('INVALID_EVENT_OPTIONS');
+    expect(data.error.message).toMatch(/bogus/);
+  });
+
   it('returns 400 when eventType is missing', async () => {
     const request = makeRequest({ eventOptions: {} });
     const response = await POST(request);

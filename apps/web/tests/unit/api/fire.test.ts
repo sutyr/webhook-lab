@@ -48,6 +48,19 @@ describe('POST /api/fire', () => {
     vi.unstubAllEnvs();
   });
 
+  it('returns 400 INVALID_EVENT_OPTIONS and sends nothing when an option value is invalid', async () => {
+    const request = makeRequest({
+      eventType: 'payment_intent.payment_failed',
+      eventOptions: { declineCode: 'bogus' },
+      targetUrl: 'https://example.com/webhook',
+    });
+    const response = await POST(request);
+    const data = await response.json();
+    expect(response.status).toBe(400);
+    expect(data.error.code).toBe('INVALID_EVENT_OPTIONS');
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   // ─── URL validation ─────────────────────────────────────────────────────────
 
   it('returns 400 when targetUrl is missing', async () => {

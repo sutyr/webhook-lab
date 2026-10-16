@@ -106,7 +106,22 @@ export async function POST(request: Request) {
     );
   }
 
-  const payload = generator(eventOptions) as Record<string, unknown>;
+  // Generators throw a descriptive Error for option values Stripe would never
+  // send (an unknown decline code, for example). Surface it as a 400.
+  let payload: Record<string, unknown>;
+  try {
+    payload = generator(eventOptions) as Record<string, unknown>;
+  } catch (err) {
+    return Response.json(
+      {
+        error: {
+          code: 'INVALID_EVENT_OPTIONS',
+          message: err instanceof Error ? err.message : 'Invalid event options',
+        },
+      },
+      { status: 400 },
+    );
+  }
 
   // ── Apply envelope overrides (livemode, apiVersion) ────────────────────────
   if (eventOptions?.livemode === true) {
