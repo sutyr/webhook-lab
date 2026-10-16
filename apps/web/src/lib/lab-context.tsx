@@ -1,13 +1,14 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 'use client';
 
-import { createContext, use, useEffect, useMemo, useReducer, type Dispatch, type ReactNode } from 'react';
-import type { StripeEventType } from '@webhook-lab/events';
-import { EVENT_CATALOG } from '@webhook-lab/events';
+import { createContext, use, useEffect, useMemo, useReducer, useState, type Dispatch, type ReactNode } from 'react';
+import type { EventCategory, StripeEventType } from '@webhook-lab/events';
+import type { CheckId, SuiteReport } from '@webhook-lab/conformance';
 import { loadString, persistString } from '@/lib/local-storage';
 import { parseUrlState, serializeToUrl } from '@/lib/url-state';
 import { getFieldsForEvent } from '@/lib/event-fields-map';
 import { extractOptionsFromJson } from '@/lib/json-to-options';
+import { categoryOf, isEventCategory, isEventType } from '@/lib/event-groups';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -37,14 +38,21 @@ export interface ScenarioStepResult {
   status: 'pending' | 'firing' | 'done' | 'error';
 }
 
-export type SidebarTab = 'events' | 'scenarios';
+/** What /api/run-suite returns: the conformance report plus the run's request ID. */
+export type SuiteRunResult = SuiteReport & { requestId: string };
+
+export type SidebarTab = 'suite' | 'scenarios' | 'events';
+
+/** What the center and response panels show. */
+export type LabMode = 'suite' | 'event' | 'scenario';
 
 export interface LabState {
-  mode: 'event' | 'scenario';
+  mode: LabMode;
   activeTab: SidebarTab;
   /** Which surface the mobile (<md) segmented control shows. Ignored at md+. */
   mobileView: 'editor' | 'response';
-  drillCategory: string | null;
+  /** Event groups expanded in the sidebar, in the order they were opened. */
+  openGroups: EventCategory[];
   searchQuery: string;
   selectedEventType: StripeEventType;
   selectedScenarioId: string | null;
@@ -61,13 +69,30 @@ export interface LabState {
   scenarioSteps: Array<{ event: object; delayMs: number; description: string }>;
   isLoading: boolean;
   error: string | null;
+  suiteReport: SuiteRunResult | null;
+  suiteRunning: boolean;
+  /** Epoch ms the current run started, for the elapsed time while it runs. */
+  suiteStartedAt: number | null;
+  suiteError: string | null;
+  /** The check last picked from the sidebar; the panels expand and reveal it. */
+  focusedCheck: CheckId | null;
+  /** Bumped on every FOCUS_CHECK so picking the same check again still reveals it. */
+  focusNonce: number;
+}
+
+/** Values restored from localStorage on load. None of them change the mode. */
+export interface HydratePayload {
+  targetUrl?: string;
+  signingSecret?: string;
+  selectedEventType?: StripeEventType;
+  openGroups?: EventCategory[];
 }
 
 export type LabAction =
   | { type: 'SET_TAB'; tab: SidebarTab }
   | { type: 'SET_MOBILE_VIEW'; view: 'editor' | 'response' }
-  | { type: 'DRILL_INTO_CATEGORY'; id: string }
-  | { type: 'DRILL_OUT' }
+  | { type: 'TOGGLE_GROUP'; category: EventCategory }
+  | { type: 'SET_GROUP_OPEN'; category: EventCategory; open: boolean }
   | { type: 'SET_SEARCH_QUERY'; query: string }
   | { type: 'SELECT_EVENT'; eventType: StripeEventType }
   | { type: 'SELECT_SCENARIO'; scenarioId: string }
@@ -91,21 +116,30 @@ export type LabAction =
   | { type: 'RESET_EDIT_PAYLOAD' }
   | { type: 'SET_EDIT_PAYLOAD'; json: string }
   | { type: 'HYDRATE_TESTED_EVENTS'; eventTypes: Set<string> }
-  | { type: 'RESTORE_FROM_HISTORY'; entry: ResponseHistoryEntry };
+  | { type: 'RESTORE_FROM_HISTORY'; entry: ResponseHistoryEntry }
+  | { type: 'HYDRATE'; values: HydratePayload }
+  | { type: 'SUITE_START'; startedAt: number }
+  | { type: 'SUITE_SUCCESS'; report: SuiteRunResult }
+  | { type: 'SUITE_ERROR'; error: string }
+  | { type: 'FOCUS_CHECK'; id: CheckId };
 
 // ─── Default State ──────────────────────────────────────────────────────────
 
-const defaultState: LabState = {
-  mode: 'event',
-  activeTab: 'events',
+const DEFAULT_EVENT: StripeEventType = 'payment_intent.succeeded';
+const DEFAULT_SECRET = 'whsec_test_secret';
+
+/** A visitor with no URL state lands on the suite. */
+export const defaultLabState: LabState = {
+  mode: 'suite',
+  activeTab: 'suite',
   mobileView: 'editor',
-  drillCategory: null,
+  openGroups: ['payments'],
   searchQuery: '',
-  selectedEventType: 'payment_intent.succeeded',
+  selectedEventType: DEFAULT_EVENT,
   selectedScenarioId: null,
   eventOptions: {},
   targetUrl: '',
-  signingSecret: 'whsec_test_secret',
+  signingSecret: DEFAULT_SECRET,
   payload: null,
   isEditingPayload: false,
   editedPayload: null,
@@ -116,36 +150,69 @@ const defaultState: LabState = {
   scenarioSteps: [],
   isLoading: false,
   error: null,
+  suiteReport: null,
+  suiteRunning: false,
+  suiteStartedAt: null,
+  suiteError: null,
+  focusedCheck: null,
+  focusNonce: 0,
 };
+
+/** `groups` with the selected event's group added, so it is never hidden. */
+function withGroupOf(groups: EventCategory[], eventType: string): EventCategory[] {
+  const category = categoryOf(eventType);
+  if (!category || groups.includes(category)) return groups;
+  return [...groups, category];
+}
 
 // ─── Reducer ────────────────────────────────────────────────────────────────
 
 export function labReducer(state: LabState, action: LabAction): LabState {
   switch (action.type) {
     case 'SET_TAB':
+      // The suite has nothing to pick in the sidebar, so its tab opens it.
+      // Events and Scenarios keep the current panels until something is picked.
+      if (action.tab === 'suite') return { ...state, activeTab: 'suite', mode: 'suite' };
       return { ...state, activeTab: action.tab };
 
     case 'SET_MOBILE_VIEW':
       return { ...state, mobileView: action.view };
 
-    case 'DRILL_INTO_CATEGORY':
-      return { ...state, drillCategory: action.id };
+    case 'TOGGLE_GROUP':
+      return {
+        ...state,
+        openGroups: state.openGroups.includes(action.category)
+          ? state.openGroups.filter((c) => c !== action.category)
+          : [...state.openGroups, action.category],
+      };
 
-    case 'DRILL_OUT':
-      return { ...state, drillCategory: null };
+    case 'SET_GROUP_OPEN': {
+      const isOpen = state.openGroups.includes(action.category);
+      if (isOpen === action.open) return state;
+      return {
+        ...state,
+        openGroups: action.open
+          ? [...state.openGroups, action.category]
+          : state.openGroups.filter((c) => c !== action.category),
+      };
+    }
 
     case 'SET_SEARCH_QUERY':
-      return { ...state, searchQuery: action.query };
+      // Results show in the Events tab, whichever tab the search started from.
+      return {
+        ...state,
+        searchQuery: action.query,
+        activeTab: action.query.trim() !== '' ? 'events' : state.activeTab,
+      };
 
-    case 'SELECT_EVENT': {
-      const entry = EVENT_CATALOG.find((e) => e.type === action.eventType);
+    case 'SELECT_EVENT':
       return {
         ...state,
         mode: 'event',
         activeTab: 'events',
         mobileView: 'editor',
         selectedEventType: action.eventType,
-        drillCategory: entry?.category ?? state.drillCategory,
+        openGroups: withGroupOf(state.openGroups, action.eventType),
         selectedScenarioId: null,
         eventOptions: {},
         payload: null,
@@ -154,7 +221,6 @@ export function labReducer(state: LabState, action: LabAction): LabState {
         response: null,
         error: null,
       };
-    }
 
     case 'SELECT_SCENARIO':
       return {
@@ -302,15 +368,14 @@ export function labReducer(state: LabState, action: LabAction): LabState {
     case 'HYDRATE_TESTED_EVENTS':
       return { ...state, testedEventTypes: action.eventTypes };
 
-    case 'RESTORE_FROM_HISTORY': {
-      const restored = EVENT_CATALOG.find((e) => e.type === action.entry.eventType);
+    case 'RESTORE_FROM_HISTORY':
       return {
         ...state,
         mode: 'event' as const,
         activeTab: 'events' as const,
         mobileView: 'editor' as const,
         selectedEventType: action.entry.eventType as StripeEventType,
-        drillCategory: restored?.category ?? state.drillCategory,
+        openGroups: withGroupOf(state.openGroups, action.entry.eventType),
         eventOptions: { ...action.entry.eventOptions },
         targetUrl: action.entry.targetUrl,
         selectedScenarioId: null,
@@ -319,7 +384,48 @@ export function labReducer(state: LabState, action: LabAction): LabState {
         response: null,
         error: null,
       };
+
+    case 'HYDRATE': {
+      const { values } = action;
+      const selectedEventType = values.selectedEventType ?? state.selectedEventType;
+      return {
+        ...state,
+        targetUrl: values.targetUrl ?? state.targetUrl,
+        signingSecret: values.signingSecret ?? state.signingSecret,
+        selectedEventType,
+        openGroups: withGroupOf(values.openGroups ?? state.openGroups, selectedEventType),
+      };
     }
+
+    case 'SUITE_START':
+      // Results land on the mobile Results view; the old report gives way to skeletons.
+      return {
+        ...state,
+        suiteRunning: true,
+        suiteStartedAt: action.startedAt,
+        suiteError: null,
+        suiteReport: null,
+        focusedCheck: null,
+        mobileView: 'response',
+      };
+
+    case 'SUITE_SUCCESS':
+      return { ...state, suiteRunning: false, suiteStartedAt: null, suiteReport: action.report };
+
+    case 'SUITE_ERROR':
+      return { ...state, suiteRunning: false, suiteStartedAt: null, suiteError: action.error };
+
+    case 'FOCUS_CHECK':
+      return {
+        ...state,
+        mode: 'suite',
+        activeTab: 'suite',
+        focusedCheck: action.id,
+        focusNonce: state.focusNonce + 1,
+        // With results, the check's row is on the Results view; before a run it
+        // is in the checklist on the editor view.
+        mobileView: state.suiteReport ? 'response' : 'editor',
+      };
 
     default:
       return state;
@@ -333,19 +439,32 @@ const LabDispatchContext = createContext<Dispatch<LabAction> | null>(null);
 
 // ─── Provider ───────────────────────────────────────────────────────────────
 
-function loadInitialState(): LabState {
-  const targetUrl = loadString('target-url', '');
-  const signingSecret = loadString('signing-secret', 'whsec_test_secret');
-  const lastEvent = loadString('last-event', 'payment_intent.succeeded') as StripeEventType;
-  const lastCategory = loadString('last-category', '');
+const OPEN_GROUPS_KEY = 'open-groups';
 
-  return {
-    ...defaultState,
-    targetUrl,
-    signingSecret,
-    selectedEventType: lastEvent,
-    drillCategory: lastCategory || null,
-  };
+function loadOpenGroups(): EventCategory[] | undefined {
+  const raw = loadString(OPEN_GROUPS_KEY, '');
+  if (!raw) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return undefined;
+    return parsed.filter((c): c is EventCategory => typeof c === 'string' && isEventCategory(c));
+  } catch {
+    return undefined;
+  }
+}
+
+/** Everything localStorage remembers. Unknown or stale values are dropped. */
+function loadPersisted(): HydratePayload {
+  const values: HydratePayload = {};
+  const targetUrl = loadString('target-url', '');
+  if (targetUrl) values.targetUrl = targetUrl;
+  const signingSecret = loadString('signing-secret', DEFAULT_SECRET);
+  if (signingSecret !== DEFAULT_SECRET) values.signingSecret = signingSecret;
+  const lastEvent = loadString('last-event', '');
+  if (isEventType(lastEvent)) values.selectedEventType = lastEvent;
+  const openGroups = loadOpenGroups();
+  if (openGroups) values.openGroups = openGroups;
+  return values;
 }
 
 function persistingDispatch(
@@ -360,55 +479,48 @@ function persistingDispatch(
       case 'SET_SIGNING_SECRET':
         persistString('signing-secret', action.secret);
         break;
-      case 'SELECT_EVENT': {
+      case 'SELECT_EVENT':
         persistString('last-event', action.eventType);
-        const evtEntry = EVENT_CATALOG.find((e) => e.type === action.eventType);
-        if (evtEntry) persistString('last-category', evtEntry.category);
-        break;
-      }
-      case 'DRILL_INTO_CATEGORY':
-        persistString('last-category', action.id);
-        break;
-      case 'DRILL_OUT':
-        persistString('last-category', '');
         break;
     }
   };
 }
 
 export function LabProvider({ children }: { children: ReactNode }) {
-  const [state, baseDispatch] = useReducer(labReducer, defaultState);
+  const [state, baseDispatch] = useReducer(labReducer, defaultLabState);
   const dispatch = useMemo(() => persistingDispatch(baseDispatch), [baseDispatch]);
+  // URL and storage writes wait for the first restore, so they never
+  // overwrite a shared link or saved state with the defaults.
+  const [hydrated, setHydrated] = useState(false);
 
-  // Load persisted state on mount, then override with URL params (URL > localStorage > defaults)
+  // Restore on mount: URL > localStorage > defaults.
   useEffect(() => {
-    const persisted = loadInitialState();
-    if (persisted.targetUrl) baseDispatch({ type: 'SET_TARGET_URL', url: persisted.targetUrl });
-    if (persisted.signingSecret !== 'whsec_test_secret') baseDispatch({ type: 'SET_SIGNING_SECRET', secret: persisted.signingSecret });
-    if (persisted.selectedEventType !== 'payment_intent.succeeded') baseDispatch({ type: 'SELECT_EVENT', eventType: persisted.selectedEventType });
-    if (persisted.drillCategory) baseDispatch({ type: 'DRILL_INTO_CATEGORY', id: persisted.drillCategory });
+    baseDispatch({ type: 'HYDRATE', values: loadPersisted() });
 
-    // URL params override localStorage
-    if (typeof window !== 'undefined') {
-      const urlState = parseUrlState(new URLSearchParams(window.location.search));
-      if (urlState.selectedEventType) baseDispatch({ type: 'SELECT_EVENT', eventType: urlState.selectedEventType });
-      if (urlState.selectedScenarioId) baseDispatch({ type: 'SELECT_SCENARIO', scenarioId: urlState.selectedScenarioId });
-      if (urlState.eventOptions) {
-        baseDispatch({ type: 'SET_EVENT_OPTIONS', options: urlState.eventOptions });
-      }
-      if (urlState.targetUrl) baseDispatch({ type: 'SET_TARGET_URL', url: urlState.targetUrl });
+    const urlState = parseUrlState(new URLSearchParams(window.location.search));
+    if (urlState.selectedEventType) baseDispatch({ type: 'SELECT_EVENT', eventType: urlState.selectedEventType });
+    if (urlState.selectedScenarioId) baseDispatch({ type: 'SELECT_SCENARIO', scenarioId: urlState.selectedScenarioId });
+    if (urlState.eventOptions) {
+      baseDispatch({ type: 'SET_EVENT_OPTIONS', options: urlState.eventOptions });
     }
+    if (urlState.targetUrl) baseDispatch({ type: 'SET_TARGET_URL', url: urlState.targetUrl });
+    setHydrated(true);
   }, []);
 
-  // Auto-update URL on relevant state changes
+  // Keep the address bar shareable as the selection changes.
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (!hydrated) return;
     const qs = serializeToUrl(state);
     const newUrl = qs || window.location.pathname;
     if (newUrl !== window.location.pathname + window.location.search) {
       window.history.replaceState(null, '', newUrl);
     }
-  }, [state.selectedEventType, state.selectedScenarioId, state.eventOptions, state.targetUrl, state.mode]);
+  }, [hydrated, state.selectedEventType, state.selectedScenarioId, state.eventOptions, state.targetUrl, state.mode]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    persistString(OPEN_GROUPS_KEY, JSON.stringify(state.openGroups));
+  }, [hydrated, state.openGroups]);
 
   return (
     <LabStateContext value={state}>

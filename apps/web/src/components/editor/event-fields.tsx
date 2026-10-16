@@ -93,7 +93,7 @@ function FieldInput({ field, value, onChange, id, currency }: {
                 className={cn(
                   'rounded-badge border px-2 py-0.5 font-mono text-[0.625rem] transition-colors duration-150',
                   Number(displayValue) === preset.cents
-                    ? 'border-copper bg-copper/10 text-copper'
+                    ? 'border-copper bg-copper-10 text-copper'
                     : 'border-border bg-surface-input text-text-muted hover:border-border-medium hover:text-text-tertiary'
                 )}
               >

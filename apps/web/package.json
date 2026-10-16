@@ -1,6 +1,6 @@
 {
   "name": "@webhook-lab/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
+    "@webhook-lab/conformance": "workspace:*",
     "@webhook-lab/events": "workspace:*",
     "@webhook-lab/signatures": "workspace:*",
     "clsx": "^2.1.1",

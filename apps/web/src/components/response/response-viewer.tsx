@@ -150,7 +150,7 @@ export function ResponseViewer() {
         </div>
         <div className="mt-4 border-t border-border pt-4 space-y-2">
           <p className="font-sans text-[0.69rem] leading-[1.4] text-text-muted">
-            Stripe retries on non-2xx responses. Handlers should respond within 5 seconds to avoid timeouts.
+            Stripe retries anything that is not a 2xx. Return the 2xx quickly and do slow work afterwards.
           </p>
           <p className="font-sans text-[0.69rem] leading-[1.4] text-text-tertiary">
             Select an event and enter your webhook URL to get started.
@@ -184,7 +184,7 @@ export function ResponseViewer() {
   // Error state (client-side error, not HTTP error)
   if (error && !response) {
     return (
-      <div className="rounded-card bg-state-error/10 p-3">
+      <div className="rounded-card bg-error-10 p-3">
         <p className="font-sans text-[0.81rem] text-state-error">{error}</p>
       </div>
     );
@@ -225,7 +225,7 @@ export function ResponseViewer() {
       <div>
         <div className="mb-1 flex items-center justify-between">
           <p className="label-section">
-            Response Body
+            Response body
           </p>
           <CopyButton text={response.responseBody} />
         </div>
@@ -251,7 +251,7 @@ export function ResponseViewer() {
 
       {/* Truncation notice (H2) */}
       {response.truncated && (
-        <p className="rounded-badge bg-state-warning/10 px-2 py-1 font-sans text-[0.69rem] text-state-warning">
+        <p className="rounded-badge bg-warning-10 px-2 py-1 font-sans text-[0.69rem] text-state-warning">
           Response truncated at 1MB. Full response was larger.
         </p>
       )}

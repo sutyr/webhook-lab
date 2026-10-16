@@ -7,9 +7,14 @@ import { EventFields } from './event-fields';
 import { JsonPreview } from './json-preview';
 import { FireControls } from './fire-controls';
 import { ScenarioRunner } from './scenario-runner';
+import { SuiteRunner } from './suite-runner';
 
 export function EventEditor() {
   const { mode } = useLabState();
+
+  if (mode === 'suite') {
+    return <SuiteRunner />;
+  }
 
   if (mode === 'scenario') {
     return <ScenarioRunner />;

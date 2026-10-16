@@ -85,6 +85,24 @@
   }
 }
 
+/* Token tints. tailwind.config.ts declares the tokens as bare var() colours,
+   and Tailwind 3 cannot apply an opacity modifier to those: bg-error-10
+   generates no CSS at all. These utilities mix the token with transparent
+   instead, so the tints render in both themes. Inside @layer utilities, so
+   variants such as hover: work. */
+@layer utilities {
+  .bg-success-5 { background-color: color-mix(in srgb, var(--color-state-success) 5%, transparent); }
+  .bg-success-10 { background-color: color-mix(in srgb, var(--color-state-success) 10%, transparent); }
+  .bg-error-5 { background-color: color-mix(in srgb, var(--color-state-error) 5%, transparent); }
+  .bg-error-10 { background-color: color-mix(in srgb, var(--color-state-error) 10%, transparent); }
+  .bg-warning-10 { background-color: color-mix(in srgb, var(--color-state-warning) 10%, transparent); }
+  .bg-info-10 { background-color: color-mix(in srgb, var(--color-state-info) 10%, transparent); }
+  .bg-copper-10 { background-color: color-mix(in srgb, var(--color-copper) 10%, transparent); }
+  .bg-copper-80 { background-color: color-mix(in srgb, var(--color-copper) 80%, transparent); }
+  .bg-copper-90 { background-color: color-mix(in srgb, var(--color-copper) 90%, transparent); }
+  .ring-copper-20 { --tw-ring-color: color-mix(in srgb, var(--color-copper) 20%, transparent); }
+}
+
 /* ─── Iteration 4: Micro-animations ─────────────────────────────────────── */
 
 /* #1 Payload shimmer */

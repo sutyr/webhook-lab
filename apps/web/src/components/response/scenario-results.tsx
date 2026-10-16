@@ -98,8 +98,8 @@ function StepResultCard({
     <div
       className={cn(
         'rounded-card border border-border',
-        isSuccess && 'bg-state-success/5',
-        isError && 'bg-state-error/5',
+        isSuccess && 'bg-success-5',
+        isError && 'bg-error-5',
         !isDone && 'bg-surface-input',
       )}
     >
@@ -123,8 +123,8 @@ function StepResultCard({
               className={cn(
                 'rounded-badge px-1.5 py-0.5 font-mono text-[0.69rem] font-medium',
                 isSuccess
-                  ? 'bg-state-success/10 text-state-success'
-                  : 'bg-state-error/10 text-state-error',
+                  ? 'bg-success-10 text-state-success'
+                  : 'bg-error-10 text-state-error',
               )}
             >
               {response.statusCode}

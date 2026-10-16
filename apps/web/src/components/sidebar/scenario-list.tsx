@@ -1,25 +1,10 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 'use client';
 
-import {
-  CheckCircle,
-  AlertTriangle,
-  ShoppingCart,
-  Shield,
-  RotateCcw,
-  type LucideIcon,
-} from 'lucide-react';
 import { SCENARIO_CATALOG } from '@webhook-lab/events';
 import { useLabState, useLabDispatch } from '@/lib/lab-context';
+import { scenarioIcon } from '@/components/sidebar/catalog-icons';
 import { cn } from '@/lib/cn';
-
-const SCENARIO_ICONS: Record<string, LucideIcon> = {
-  'subscription-happy-path': CheckCircle,
-  'subscription-failure': AlertTriangle,
-  'checkout-flow': ShoppingCart,
-  'dispute-lifecycle': Shield,
-  'refund-flow': RotateCcw,
-};
 
 const SCENARIO_ACCENTS: Record<string, string> = {
   'subscription-happy-path': 'border-l-state-success',
@@ -27,6 +12,9 @@ const SCENARIO_ACCENTS: Record<string, string> = {
   'checkout-flow': 'border-l-state-info',
   'dispute-lifecycle': 'border-l-state-warning',
   'refund-flow': 'border-l-state-info',
+  'trial-conversion': 'border-l-state-success',
+  '3d-secure': 'border-l-state-warning',
+  'early-fraud-warning': 'border-l-state-warning',
 };
 
 export function ScenarioList() {
@@ -39,7 +27,7 @@ export function ScenarioList() {
         const isSelected =
           state.mode === 'scenario' &&
           state.selectedScenarioId === scenario.id;
-        const Icon = SCENARIO_ICONS[scenario.id];
+        const Icon = scenarioIcon(scenario.id);
         const accent = SCENARIO_ACCENTS[scenario.id] ?? 'border-l-transparent';
 
         return (
@@ -57,13 +45,11 @@ export function ScenarioList() {
                 : 'hover:bg-surface-input',
             )}
           >
-            {Icon && (
-              <Icon
-                size={16}
-                strokeWidth={1.75}
-                className="flex-shrink-0 text-text-tertiary"
-              />
-            )}
+            <Icon
+              size={16}
+              strokeWidth={1.75}
+              className="flex-shrink-0 text-text-tertiary"
+            />
             <span className="flex-1 font-sans text-[0.75rem] leading-[1.3] text-text-secondary">
               {scenario.name}
             </span>

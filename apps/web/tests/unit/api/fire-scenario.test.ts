@@ -55,6 +55,9 @@ describe('POST /api/fire-scenario', () => {
       'checkout-flow': 3,
       'dispute-lifecycle': 4,
       'refund-flow': 2,
+      'trial-conversion': 7,
+      '3d-secure': 6,
+      'early-fraud-warning': 4,
     };
 
     for (const [id, expectedCount] of Object.entries(scenarios)) {
@@ -64,6 +67,31 @@ describe('POST /api/fire-scenario', () => {
 
       expect(data.steps.length).toBe(expectedCount);
     }
+  });
+
+  it('returns 400 UNKNOWN_SCENARIO for names inherited from Object.prototype', async () => {
+    for (const scenarioId of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      const response = await POST(makeRequest({ scenarioId }));
+      const data = await response.json();
+
+      expect(response.status, scenarioId).toBe(400);
+      expect(data.error.code).toBe('UNKNOWN_SCENARIO');
+    }
+  });
+
+  it('uses a string seed and ignores a seed of any other type', async () => {
+    const objectIds = async (scenarioOptions?: unknown) => {
+      const response = await POST(makeRequest({ scenarioId: 'trial-conversion', scenarioOptions }));
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      return data.steps.map((s: { event: { data: { object: { id: string } } } }) => s.event.data.object.id);
+    };
+
+    const byDefault = await objectIds();
+    expect(await objectIds({ seed: 'run-1' })).not.toEqual(byDefault);
+    expect(await objectIds({ seed: 'run-1' })).toEqual(await objectIds({ seed: 'run-1' }));
+    expect(await objectIds({ seed: 42 })).toEqual(byDefault);
+    expect(await objectIds('not-an-object')).toEqual(byDefault);
   });
 
   it('returns 400 when scenarioId is missing', async () => {

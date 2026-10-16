@@ -24,12 +24,12 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   title: 'Webhook Lab',
   description:
-    'Open-source Stripe webhook testing tool. Generate structurally correct events, sign them, and fire at any endpoint.',
+    'Open-source test suite for your Stripe webhook handler. Checks signature verification, stale timestamps, duplicates and out-of-order delivery, and fires 39 schema-accurate events.',
   metadataBase: new URL('https://lab.sutyr.com'),
   openGraph: {
     title: 'Webhook Lab',
     description:
-      'Generate and test Stripe webhook events with proper signatures. No Stripe account required.',
+      'A test suite for your Stripe webhook handler, plus signed, schema-accurate events to fire. No Stripe account required.',
     type: 'website',
     siteName: 'Webhook Lab by Sutyr',
   },
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Webhook Lab',
     description:
-      'Generate and test Stripe webhook events with proper signatures. No Stripe account required.',
+      'A test suite for your Stripe webhook handler, plus signed, schema-accurate events to fire. No Stripe account required.',
   },
 };
 

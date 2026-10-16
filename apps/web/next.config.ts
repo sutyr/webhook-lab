@@ -8,7 +8,7 @@ const scriptSrc =
     : "script-src 'self' 'unsafe-inline'";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ['@webhook-lab/events', '@webhook-lab/signatures'],
+  transpilePackages: ['@webhook-lab/conformance', '@webhook-lab/events', '@webhook-lab/signatures'],
 
   async headers() {
     return [

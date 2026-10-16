@@ -5,28 +5,27 @@ import { useEffect } from 'react';
 import { useLabState, useLabDispatch, type SidebarTab } from '@/lib/lab-context';
 import { cn } from '@/lib/cn';
 
-const TABS: { id: SidebarTab; label: string; shortcut: string }[] = [
-  { id: 'events', label: 'Events', shortcut: '1' },
-  { id: 'scenarios', label: 'Scenarios', shortcut: '2' },
+export const SIDEBAR_TABS: { id: SidebarTab; label: string }[] = [
+  { id: 'suite', label: 'Suite' },
+  { id: 'scenarios', label: 'Scenarios' },
+  { id: 'events', label: 'Events' },
 ];
 
 export function SidebarTabs() {
   const { activeTab } = useLabState();
   const dispatch = useLabDispatch();
 
-  // Keyboard shortcut: Cmd/Ctrl+1 → Events, Cmd/Ctrl+2 → Scenarios
+  // Cmd/Ctrl+1, 2, 3 pick the tabs in the order they are shown.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (!e.metaKey && !e.ctrlKey) return;
       const target = e.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
 
-      if (e.key === '1') {
+      const tab = SIDEBAR_TABS[Number(e.key) - 1];
+      if (tab && /^[1-9]$/.test(e.key)) {
         e.preventDefault();
-        dispatch({ type: 'SET_TAB', tab: 'events' });
-      } else if (e.key === '2') {
-        e.preventDefault();
-        dispatch({ type: 'SET_TAB', tab: 'scenarios' });
+        dispatch({ type: 'SET_TAB', tab: tab.id });
       }
     }
     document.addEventListener('keydown', handleKeyDown);
@@ -34,8 +33,8 @@ export function SidebarTabs() {
   }, [dispatch]);
 
   return (
-    <div className="flex h-10 border-b border-border" role="tablist" aria-label="Sidebar navigation">
-      {TABS.map((tab) => {
+    <div className="flex h-10 flex-shrink-0 border-b border-border" role="tablist" aria-label="Sidebar navigation">
+      {SIDEBAR_TABS.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
           <button

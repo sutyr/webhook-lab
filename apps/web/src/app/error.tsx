@@ -45,7 +45,7 @@ export default function Error({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex min-h-[44px] items-center rounded-cta bg-copper px-4 py-2.5 font-sans text-[0.81rem] font-medium text-white transition-all duration-150 hover:bg-copper/90"
+            className="inline-flex min-h-[44px] items-center rounded-cta bg-copper px-4 py-2.5 font-sans text-[0.81rem] font-medium text-white transition-all duration-150 hover:bg-copper-90"
           >
             Try again
           </button>

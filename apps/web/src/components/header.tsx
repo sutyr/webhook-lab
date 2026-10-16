@@ -7,45 +7,78 @@ import { cn } from '@/lib/cn';
 import { useTheme } from '@/components/theme-provider';
 import { useBreadcrumbs } from '@/lib/use-breadcrumbs';
 import { useLabState, useLabDispatch } from '@/lib/lab-context';
+import { filterEvents, stepEvent } from '@/lib/event-groups';
 import { clearAll } from '@/lib/local-storage';
 import { LabLockup } from '@/components/suture-mark';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  /**
+   * Below lg the sidebar lives in a drawer, so search opens the drawer and
+   * its search field instead of the inline one.
+   */
+  onMobileSearch?: () => void;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+const isNarrow = () => window.matchMedia('(max-width: 1023px)').matches;
+
+export function Header({ onMenuClick, onMobileSearch }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const breadcrumbs = useBreadcrumbs();
-  const { searchQuery } = useLabState();
+  const { searchQuery, selectedEventType } = useLabState();
   const dispatch = useLabDispatch();
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const mobileInputRef = useRef<HTMLInputElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef(onMobileSearch);
+  mobileSearchRef.current = onMobileSearch;
 
   useEffect(() => {
-    if (!searchOpen) return;
-    // Focus whichever search input is visible for the current breakpoint.
-    (inputRef.current ?? mobileInputRef.current)?.focus();
-    if (window.matchMedia('(max-width: 1023px)').matches) {
-      mobileInputRef.current?.focus();
-    }
+    if (searchOpen) inputRef.current?.focus();
   }, [searchOpen]);
 
-  // Cmd/Ctrl+K to toggle search
+  // Cmd/Ctrl+K toggles search
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setSearchOpen((prev) => !prev);
+        if (isNarrow() && mobileSearchRef.current) mobileSearchRef.current();
+        else setSearchOpen((prev) => !prev);
       }
     }
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  function openSearch() {
+    if (isNarrow() && onMobileSearch) onMobileSearch();
+    else setSearchOpen(!searchOpen);
+  }
+
+  /**
+   * Arrow keys walk the matches and select each one, so the editor follows
+   * along; Enter keeps the current match (or takes the first) and closes.
+   */
+  function handleSearchKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Escape') {
+      closeSearch();
+      return;
+    }
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Enter') return;
+    const matches = filterEvents(searchQuery).map((entry) => entry.type);
+    if (matches.length === 0) return;
+    e.preventDefault();
+    if (e.key === 'Enter') {
+      const pick = matches.includes(selectedEventType) ? selectedEventType : matches[0];
+      dispatch({ type: 'SELECT_EVENT', eventType: pick });
+      closeSearch();
+      return;
+    }
+    const next = stepEvent(matches, selectedEventType, e.key === 'ArrowDown' ? 1 : -1);
+    if (next) dispatch({ type: 'SELECT_EVENT', eventType: next });
+  }
 
   // Close settings popover on outside click or Escape
   useEffect(() => {
@@ -103,11 +136,13 @@ export function Header({ onMenuClick }: HeaderProps) {
               <input
                 ref={inputRef}
                 type="text"
-                placeholder="Filter events..."
-                className="min-w-0 flex-1 bg-transparent font-mono text-[0.81rem] text-text-primary outline-none placeholder:text-text-muted"
+                placeholder="Search events"
+                aria-label="Search events"
+                aria-controls="tabpanel-events"
+                className="min-w-0 flex-1 bg-transparent font-mono text-[0.81rem] text-text-primary outline-none placeholder:font-sans placeholder:text-text-muted"
                 value={searchQuery}
                 onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
-                onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
+                onKeyDown={handleSearchKeyDown}
               />
               <button
                 type="button"
@@ -154,7 +189,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       <nav className="flex flex-shrink-0 items-center gap-0.5 sm:gap-2 md:gap-3">
         <button
           type="button"
-          onClick={() => setSearchOpen(!searchOpen)}
+          onClick={openSearch}
           aria-label="Search events"
           className="flex items-center gap-1.5 rounded-input p-2 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary md:p-1.5 lg:px-2"
         >
@@ -228,29 +263,6 @@ export function Header({ onMenuClick }: HeaderProps) {
       </nav>
       </div>
 
-      {/* Mobile search row: full-width filter below the bar (lg has its own inline search) */}
-      {searchOpen && (
-        <div className="flex items-center gap-2 border-t border-border px-4 py-2.5 lg:hidden">
-          <Search size={16} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
-          <input
-            ref={mobileInputRef}
-            type="text"
-            placeholder="Filter events..."
-            className="min-w-0 flex-1 bg-transparent font-mono text-text-primary outline-none placeholder:text-text-muted"
-            value={searchQuery}
-            onChange={(e) => dispatch({ type: 'SET_SEARCH_QUERY', query: e.target.value })}
-            onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
-          />
-          <button
-            type="button"
-            onClick={closeSearch}
-            aria-label="Close search"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-input text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary"
-          >
-            <X size={16} strokeWidth={1.75} />
-          </button>
-        </div>
-      )}
     </header>
   );
 }

@@ -1,7 +1,7 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { X } from 'lucide-react';
 
 interface SidebarDrawerProps {
@@ -11,6 +11,7 @@ interface SidebarDrawerProps {
 }
 
 export function SidebarDrawer({ isOpen, onClose, children }: SidebarDrawerProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -20,6 +21,11 @@ export function SidebarDrawer({ isOpen, onClose, children }: SidebarDrawerProps)
 
   useEffect(() => {
     if (!isOpen) return;
+    // The drawer stays mounted while closed, so the current event can be far
+    // down the list by the time it opens. Bring it into view.
+    scrollRef.current
+      ?.querySelector<HTMLElement>('[role="option"][aria-selected="true"]')
+      ?.scrollIntoView({ block: 'center' });
     document.addEventListener('keydown', handleKeyDown);
     // Lock body scroll so the page doesn't move behind the drawer.
     const prevOverflow = document.body.style.overflow;
@@ -64,7 +70,7 @@ export function SidebarDrawer({ isOpen, onClose, children }: SidebarDrawerProps)
         </div>
 
         {/* Scrollable content */}
-        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </div>
     </div>
   );

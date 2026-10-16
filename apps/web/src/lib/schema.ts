@@ -44,7 +44,7 @@ export const structuredData = {
       operatingSystem: 'Cloud, Web-based',
       url: 'https://lab.sutyr.com',
       description:
-        'Open-source Stripe webhook testing tool by Sutyr. Generate schema-accurate Stripe billing events, sign them with valid HMAC signatures, and fire them at any endpoint. Apache 2.0.',
+        'Open-source test suite for Stripe webhook handlers, by Sutyr. Checks how a handler responds to correctly signed, forged, stale, duplicate and out-of-order deliveries, and generates 39 schema-accurate Stripe event types with valid signatures. Runs in the browser or as a CLI. Apache 2.0.',
       license: 'https://www.apache.org/licenses/LICENSE-2.0',
       isAccessibleForFree: true,
       codeRepository: 'https://github.com/sutyr/webhook-lab',

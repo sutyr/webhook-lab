@@ -14,6 +14,12 @@ describe('EVENT_TYPE_TO_GENERATOR', () => {
     }
   });
 
+  it('maps exactly the catalogued event types', () => {
+    expect(Object.keys(EVENT_TYPE_TO_GENERATOR).sort()).toEqual(
+      EVENT_CATALOG.map((e) => e.type).sort(),
+    );
+  });
+
   it('every generator function is callable and returns an event envelope', () => {
     for (const [eventType, generator] of Object.entries(EVENT_TYPE_TO_GENERATOR)) {
       const event = generator();
@@ -24,6 +30,32 @@ describe('EVENT_TYPE_TO_GENERATOR', () => {
       expect(event.object, `${eventType} event missing object`).toBe('event');
       expect(event.type, `${eventType} event missing type`).toBe(eventType);
       expect(event.data, `${eventType} event missing data`).toBeDefined();
+    }
+  });
+
+  it('finds nothing for Object.prototype names', () => {
+    const lookup = EVENT_TYPE_TO_GENERATOR as Record<string, unknown>;
+    for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+      expect(lookup[name], name).toBeUndefined();
+    }
+  });
+
+  it('drops empty-string options so the generator default applies', () => {
+    const event = EVENT_TYPE_TO_GENERATOR['charge.refunded']({ refundAmount: '', customerId: '', amount: 5000 });
+    expect(event.data.object.amount_refunded).toBe(5000);
+    expect(event.data.object.customer).toMatch(/^cus_/);
+  });
+
+  it('passes other options through unchanged', () => {
+    const event = EVENT_TYPE_TO_GENERATOR['customer.deleted']({ currency: null, email: null });
+    expect(event.data.object.currency).toBeNull();
+    expect(event.data.object.email).toBeNull();
+  });
+
+  it('treats a non-object options value as no options', () => {
+    for (const options of [null, 'amount=5', [1, 2], 42]) {
+      const event = EVENT_TYPE_TO_GENERATOR['payment_intent.succeeded'](options);
+      expect(event.data.object.amount).toBe(2999);
     }
   });
 });

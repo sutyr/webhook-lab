@@ -1,31 +1,10 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from 'vitest';
-import { labReducer } from '@/lib/lab-context';
-import type { LabState, LabAction, FireResponse, ResponseHistoryEntry } from '@/lib/lab-context';
+import { defaultLabState, labReducer } from '@/lib/lab-context';
+import type { LabState, FireResponse, ResponseHistoryEntry, SuiteRunResult } from '@/lib/lab-context';
 
-const defaultState: LabState = {
-  mode: 'event',
-  activeTab: 'events',
-  mobileView: 'editor',
-  drillCategory: null,
-  searchQuery: '',
-  selectedEventType: 'payment_intent.succeeded',
-  selectedScenarioId: null,
-  eventOptions: {},
-  targetUrl: '',
-  signingSecret: 'whsec_test_secret',
-  payload: null,
-  isEditingPayload: false,
-  editedPayload: null,
-  response: null,
-  responseHistory: [],
-  testedEventTypes: new Set<string>(),
-  scenarioResults: [],
-  scenarioSteps: [],
-  isLoading: false,
-  error: null,
-};
+const defaultState: LabState = { ...defaultLabState, testedEventTypes: new Set<string>() };
 
 const mockResponse: FireResponse = {
   statusCode: 200,
@@ -37,41 +16,117 @@ const mockResponse: FireResponse = {
 
 const mockPayload = { id: 'evt_test', type: 'payment_intent.succeeded' };
 
+const mockReport: SuiteRunResult = {
+  target: 'https://example.com/hook',
+  apiVersion: '2026-09-30.endive',
+  results: [
+    {
+      id: 'valid-event-accepted',
+      title: 'Accepts a correctly signed event',
+      status: 'pass',
+      expected: '2xx',
+      observed: '200 in 12 ms',
+      why: 'why',
+      durationMs: 12,
+      deliveries: [],
+    },
+  ],
+  summary: { pass: 1, fail: 0, warn: 0, error: 0 },
+  requestId: 'run-123',
+};
+
 describe('labReducer', () => {
-  it('initial state has correct defaults', () => {
-    expect(defaultState.mode).toBe('event');
-    expect(defaultState.activeTab).toBe('events');
-    expect(defaultState.isLoading).toBe(false);
-    expect(defaultState.isEditingPayload).toBe(false);
-    expect(defaultState.responseHistory).toHaveLength(0);
+  it('a visitor with no URL state starts on the suite', () => {
+    expect(defaultLabState.mode).toBe('suite');
+    expect(defaultLabState.activeTab).toBe('suite');
+    expect(defaultLabState.isLoading).toBe(false);
+    expect(defaultLabState.isEditingPayload).toBe(false);
+    expect(defaultLabState.responseHistory).toHaveLength(0);
+    expect(defaultLabState.suiteReport).toBeNull();
+    expect(defaultLabState.suiteRunning).toBe(false);
+  });
+
+  it('the default selected event has its group open', () => {
+    expect(defaultLabState.selectedEventType).toBe('payment_intent.succeeded');
+    expect(defaultLabState.openGroups).toEqual(['payments']);
   });
 
   // ─── Navigation ──────────────────────────────────────────────────────────
 
-  it('SET_TAB switches activeTab', () => {
-    const state = labReducer(defaultState, { type: 'SET_TAB', tab: 'scenarios' });
+  it('SET_TAB scenarios switches activeTab but keeps the panels until a pick', () => {
+    const inEvent = { ...defaultState, mode: 'event' as const, activeTab: 'events' as const };
+    const state = labReducer(inEvent, { type: 'SET_TAB', tab: 'scenarios' });
     expect(state.activeTab).toBe('scenarios');
+    expect(state.mode).toBe('event');
   });
 
-  it('DRILL_INTO_CATEGORY sets drillCategory', () => {
-    const state = labReducer(defaultState, { type: 'DRILL_INTO_CATEGORY', id: 'billing' });
-    expect(state.drillCategory).toBe('billing');
+  it('SET_TAB events keeps the suite on screen until an event is picked', () => {
+    const state = labReducer(defaultState, { type: 'SET_TAB', tab: 'events' });
+    expect(state.activeTab).toBe('events');
+    expect(state.mode).toBe('suite');
   });
 
-  it('DRILL_OUT clears drillCategory', () => {
-    const drilled = { ...defaultState, drillCategory: 'billing' };
-    const state = labReducer(drilled, { type: 'DRILL_OUT' });
-    expect(state.drillCategory).toBeNull();
+  it('SET_TAB suite opens suite mode, since the tab has nothing to pick', () => {
+    const inScenario = {
+      ...defaultState,
+      mode: 'scenario' as const,
+      activeTab: 'scenarios' as const,
+      selectedScenarioId: 'checkout-flow',
+    };
+    const state = labReducer(inScenario, { type: 'SET_TAB', tab: 'suite' });
+    expect(state.mode).toBe('suite');
+    expect(state.activeTab).toBe('suite');
+    // The scenario stays selected for when the user goes back.
+    expect(state.selectedScenarioId).toBe('checkout-flow');
+  });
+
+  it('TOGGLE_GROUP opens a closed group and closes an open one', () => {
+    const opened = labReducer(defaultState, { type: 'TOGGLE_GROUP', category: 'billing' });
+    expect(opened.openGroups).toEqual(['payments', 'billing']);
+    const closed = labReducer(opened, { type: 'TOGGLE_GROUP', category: 'payments' });
+    expect(closed.openGroups).toEqual(['billing']);
+  });
+
+  it('SET_GROUP_OPEN opens and closes, and is a no-op when already there', () => {
+    const opened = labReducer(defaultState, { type: 'SET_GROUP_OPEN', category: 'disputes', open: true });
+    expect(opened.openGroups).toEqual(['payments', 'disputes']);
+    expect(labReducer(opened, { type: 'SET_GROUP_OPEN', category: 'disputes', open: true })).toBe(opened);
+    const closed = labReducer(opened, { type: 'SET_GROUP_OPEN', category: 'payments', open: false });
+    expect(closed.openGroups).toEqual(['disputes']);
+    expect(labReducer(closed, { type: 'SET_GROUP_OPEN', category: 'payments', open: false })).toBe(closed);
   });
 
   // ─── Event selection ─────────────────────────────────────────────────────
 
-  it('SELECT_EVENT sets selectedEventType and derives drillCategory', () => {
+  it('SELECT_EVENT sets selectedEventType, event mode and the Events tab', () => {
     const state = labReducer(defaultState, { type: 'SELECT_EVENT', eventType: 'invoice.paid' });
     expect(state.selectedEventType).toBe('invoice.paid');
-    expect(state.drillCategory).toBe('billing');
     expect(state.mode).toBe('event');
     expect(state.activeTab).toBe('events');
+  });
+
+  it('SELECT_EVENT opens the group that holds the event and keeps the others', () => {
+    const state = labReducer(defaultState, { type: 'SELECT_EVENT', eventType: 'invoice.paid' });
+    expect(state.openGroups).toEqual(['payments', 'billing']);
+  });
+
+  it('SELECT_EVENT does not duplicate a group that is already open', () => {
+    const state = labReducer(defaultState, { type: 'SELECT_EVENT', eventType: 'charge.failed' });
+    expect(state.openGroups).toEqual(['payments']);
+  });
+
+  it('SELECT_EVENT opens the new payment_methods group for its events', () => {
+    const state = labReducer(
+      { ...defaultState, openGroups: [] },
+      { type: 'SELECT_EVENT', eventType: 'payment_method.automatically_updated' },
+    );
+    expect(state.openGroups).toEqual(['payment_methods']);
+  });
+
+  it('SELECT_EVENT leaves the suite report in place for when the user returns', () => {
+    const withReport = { ...defaultState, suiteReport: mockReport };
+    const state = labReducer(withReport, { type: 'SELECT_EVENT', eventType: 'invoice.paid' });
+    expect(state.suiteReport).toBe(mockReport);
   });
 
   it('SELECT_EVENT resets eventOptions, payload, response, and edit state', () => {
@@ -203,7 +258,7 @@ describe('labReducer', () => {
 
   // ─── Restore from history ────────────────────────────────────────────────
 
-  it('RESTORE_FROM_HISTORY sets eventType, eventOptions, targetUrl, drillCategory', () => {
+  it('RESTORE_FROM_HISTORY sets eventType, eventOptions, targetUrl and opens the group', () => {
     const entry: ResponseHistoryEntry = {
       eventType: 'invoice.payment_failed',
       response: mockResponse,
@@ -217,7 +272,7 @@ describe('labReducer', () => {
     expect(state.selectedEventType).toBe('invoice.payment_failed');
     expect(state.eventOptions).toEqual({ amount: 4999, currency: 'eur', declineCode: 'insufficient_funds' });
     expect(state.targetUrl).toBe('https://staging.example.com/hook');
-    expect(state.drillCategory).toBe('billing');
+    expect(state.openGroups).toContain('billing');
     expect(state.mode).toBe('event');
     expect(state.activeTab).toBe('events');
   });
@@ -277,5 +332,122 @@ describe('labReducer', () => {
   it('SET_SEARCH_QUERY updates searchQuery', () => {
     const state = labReducer(defaultState, { type: 'SET_SEARCH_QUERY', query: 'inv' });
     expect(state.searchQuery).toBe('inv');
+  });
+
+  it('SET_SEARCH_QUERY with text shows the Events tab, where the matches are', () => {
+    const state = labReducer(defaultState, { type: 'SET_SEARCH_QUERY', query: 'dispute' });
+    expect(state.activeTab).toBe('events');
+    // Searching browses; it does not change what the panels show.
+    expect(state.mode).toBe('suite');
+  });
+
+  it('SET_SEARCH_QUERY with blank text keeps the current tab', () => {
+    const state = labReducer(defaultState, { type: 'SET_SEARCH_QUERY', query: '  ' });
+    expect(state.activeTab).toBe('suite');
+  });
+
+  // ─── Hydration ───────────────────────────────────────────────────────────
+
+  it('HYDRATE restores saved values without leaving the suite', () => {
+    const state = labReducer(defaultState, {
+      type: 'HYDRATE',
+      values: {
+        targetUrl: 'https://staging.example.com/hook',
+        signingSecret: 'whsec_saved',
+        selectedEventType: 'charge.dispute.closed',
+        openGroups: ['billing'],
+      },
+    });
+    expect(state.mode).toBe('suite');
+    expect(state.activeTab).toBe('suite');
+    expect(state.targetUrl).toBe('https://staging.example.com/hook');
+    expect(state.signingSecret).toBe('whsec_saved');
+    expect(state.selectedEventType).toBe('charge.dispute.closed');
+    // Saved open groups, plus the group of the restored event.
+    expect(state.openGroups).toEqual(['billing', 'disputes']);
+  });
+
+  it('HYDRATE with nothing saved keeps the defaults', () => {
+    const state = labReducer(defaultState, { type: 'HYDRATE', values: {} });
+    expect(state.targetUrl).toBe('');
+    expect(state.signingSecret).toBe('whsec_test_secret');
+    expect(state.selectedEventType).toBe('payment_intent.succeeded');
+    expect(state.openGroups).toEqual(['payments']);
+  });
+
+  it('HYDRATE always opens the selected event\'s group, even if it was saved closed', () => {
+    const state = labReducer(defaultState, { type: 'HYDRATE', values: { openGroups: [] } });
+    expect(state.openGroups).toEqual(['payments']);
+  });
+
+  // ─── Suite ───────────────────────────────────────────────────────────────
+
+  it('SUITE_START marks the run, clears the last result and shows Results on mobile', () => {
+    const before = {
+      ...defaultState,
+      suiteReport: mockReport,
+      suiteError: 'old error',
+      focusedCheck: 'responds-in-time' as const,
+    };
+    const state = labReducer(before, { type: 'SUITE_START', startedAt: 1_700_000_000_000 });
+    expect(state.suiteRunning).toBe(true);
+    expect(state.suiteStartedAt).toBe(1_700_000_000_000);
+    expect(state.suiteReport).toBeNull();
+    expect(state.suiteError).toBeNull();
+    expect(state.focusedCheck).toBeNull();
+    expect(state.mobileView).toBe('response');
+  });
+
+  it('SUITE_SUCCESS stores the report and ends the run', () => {
+    const running = labReducer(defaultState, { type: 'SUITE_START', startedAt: 1 });
+    const state = labReducer(running, { type: 'SUITE_SUCCESS', report: mockReport });
+    expect(state.suiteRunning).toBe(false);
+    expect(state.suiteStartedAt).toBeNull();
+    expect(state.suiteReport).toBe(mockReport);
+    expect(state.suiteError).toBeNull();
+  });
+
+  it('SUITE_ERROR stores the API message and ends the run', () => {
+    const running = labReducer(defaultState, { type: 'SUITE_START', startedAt: 1 });
+    const state = labReducer(running, { type: 'SUITE_ERROR', error: 'Blocked host: localhost' });
+    expect(state.suiteRunning).toBe(false);
+    expect(state.suiteError).toBe('Blocked host: localhost');
+    expect(state.suiteReport).toBeNull();
+  });
+
+  it('suite runs leave the single-event state alone', () => {
+    const withEvent = { ...defaultState, response: mockResponse, isLoading: false, error: null };
+    const started = labReducer(withEvent, { type: 'SUITE_START', startedAt: 1 });
+    const failed = labReducer(started, { type: 'SUITE_ERROR', error: 'Rate limit exceeded' });
+    expect(failed.response).toBe(mockResponse);
+    expect(failed.isLoading).toBe(false);
+    expect(failed.error).toBeNull();
+  });
+
+  it('FOCUS_CHECK opens the suite on that check', () => {
+    const inEvents = { ...defaultState, mode: 'event' as const, activeTab: 'events' as const };
+    const state = labReducer(inEvents, { type: 'FOCUS_CHECK', id: 'stale-timestamp-rejected' });
+    expect(state.mode).toBe('suite');
+    expect(state.activeTab).toBe('suite');
+    expect(state.focusedCheck).toBe('stale-timestamp-rejected');
+  });
+
+  it('FOCUS_CHECK bumps the nonce, so picking the same check again reveals it again', () => {
+    const once = labReducer(defaultState, { type: 'FOCUS_CHECK', id: 'responds-in-time' });
+    const twice = labReducer(once, { type: 'FOCUS_CHECK', id: 'responds-in-time' });
+    expect(twice.focusNonce).toBe(once.focusNonce + 1);
+  });
+
+  it('FOCUS_CHECK shows the checklist on mobile before a run and the results after', () => {
+    const before = labReducer(
+      { ...defaultState, mobileView: 'response' },
+      { type: 'FOCUS_CHECK', id: 'responds-in-time' },
+    );
+    expect(before.mobileView).toBe('editor');
+    const after = labReducer(
+      { ...defaultState, suiteReport: mockReport },
+      { type: 'FOCUS_CHECK', id: 'responds-in-time' },
+    );
+    expect(after.mobileView).toBe('response');
   });
 });

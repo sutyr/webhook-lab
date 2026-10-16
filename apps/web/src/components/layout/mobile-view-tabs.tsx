@@ -4,25 +4,30 @@
 import { useLabState, useLabDispatch } from '@/lib/lab-context';
 import { cn } from '@/lib/cn';
 
-const TABS: { id: 'editor' | 'response'; label: string }[] = [
-  { id: 'editor', label: 'Editor' },
-  { id: 'response', label: 'Response' },
-];
+const VIEWS = ['editor', 'response'] as const;
+
+const LABELS: Record<'suite' | 'other', Record<(typeof VIEWS)[number], string>> = {
+  suite: { editor: 'Checks', response: 'Results' },
+  other: { editor: 'Editor', response: 'Response' },
+};
 
 /**
  * Mobile-only (<md) segmented control swapping the center editor and the
  * response panel, so each gets the full width of a phone screen. Hidden at
  * md+ where both panels show side-by-side. A copper dot marks Response when
- * a result is present.
+ * a result is present. The suite calls the two views Checks and Results.
  */
 export function MobileViewTabs() {
-  const { mobileView, response, scenarioResults, mode } = useLabState();
+  const { mobileView, response, scenarioResults, mode, suiteReport, suiteError } = useLabState();
   const dispatch = useLabDispatch();
 
   const hasResult =
-    mode === 'scenario'
-      ? scenarioResults.some((r) => r.status === 'done' || r.status === 'error')
-      : response !== null;
+    mode === 'suite'
+      ? suiteReport !== null || suiteError !== null
+      : mode === 'scenario'
+        ? scenarioResults.some((r) => r.status === 'done' || r.status === 'error')
+        : response !== null;
+  const labels = LABELS[mode === 'suite' ? 'suite' : 'other'];
 
   return (
     <div
@@ -30,15 +35,15 @@ export function MobileViewTabs() {
       role="tablist"
       aria-label="Editor and response views"
     >
-      {TABS.map((tab) => {
-        const isActive = mobileView === tab.id;
+      {VIEWS.map((view) => {
+        const isActive = mobileView === view;
         return (
           <button
-            key={tab.id}
+            key={view}
             type="button"
             role="tab"
             aria-selected={isActive}
-            onClick={() => dispatch({ type: 'SET_MOBILE_VIEW', view: tab.id })}
+            onClick={() => dispatch({ type: 'SET_MOBILE_VIEW', view })}
             className={cn(
               'flex flex-1 items-center justify-center gap-1.5 font-sans text-[0.81rem] font-medium transition-colors duration-150',
               isActive
@@ -46,8 +51,8 @@ export function MobileViewTabs() {
                 : 'text-text-tertiary hover:text-text-secondary',
             )}
           >
-            {tab.label}
-            {tab.id === 'response' && hasResult && (
+            {labels[view]}
+            {view === 'response' && hasResult && (
               <span
                 className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-copper"
                 aria-label="New response"

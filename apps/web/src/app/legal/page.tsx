@@ -31,11 +31,15 @@ export default function LegalPage() {
 
         <div className="mt-5 space-y-4 font-sans text-[0.88rem] leading-[1.55] text-text-secondary">
           <p>
-            Webhook Lab proxies the event you fire to the endpoint you specify. To do that it
-            processes (in memory, for the duration of the request only) your{' '}
+            Webhook Lab sends the events you fire, and the requests of a test suite run, to the
+            endpoint you specify. A suite run sends up to 10 requests, some of them deliberately
+            invalid (a forged or missing signature, a body changed after signing, an old timestamp),
+            and shows you the status code, timing and the first 4 KB of each response. To do that
+            it processes (in memory, for the duration of the request only) your{' '}
             <span className="text-text-primary">target URL</span>, the{' '}
-            <span className="text-text-primary">event payload</span>, the{' '}
-            <span className="text-text-primary">signing secret</span>, and your{' '}
+            <span className="text-text-primary">event payloads</span>, the{' '}
+            <span className="text-text-primary">signing secret</span>, the{' '}
+            <span className="text-text-primary">responses from your endpoint</span>, and your{' '}
             <span className="text-text-primary">IP address</span> (used solely for rate limiting).
           </p>
           <p>
@@ -44,11 +48,14 @@ export default function LegalPage() {
             and uses privacy-friendly, GDPR-aligned analytics to count aggregate page views, with no
             cookies and no personal data collected. The only client-side storage is your browser’s{' '}
             <span className="font-mono text-[0.81rem]">localStorage</span> (which is not a cookie),
-            holding your theme and preferences and never leaving your device.
+            holding your theme, your preferences, and the last target URL and signing secret you
+            entered so the form is filled next time. That stored copy never leaves your device, and
+            Clear saved data, under Settings, removes it.
           </p>
           <p className="rounded-card border border-border bg-surface-card p-3 text-[0.81rem] text-text-tertiary">
             Use synthetic test data (which the Lab generates for you) rather than real customer or
-            personal data in payloads.
+            personal data in payloads, and point the suite only at endpoints you run or are allowed
+            to test.
           </p>
         </div>
 
@@ -83,7 +90,7 @@ export default function LegalPage() {
         </section>
 
         <div className="mt-12 border-t border-border pt-5 font-mono text-[0.69rem] text-text-muted">
-          <p>Effective 19 June 2026, Sutyr Inc.</p>
+          <p>Effective 19 June 2026, updated 16 October 2026, Sutyr Inc.</p>
           <Link href="/" className="mt-2 inline-block text-text-tertiary underline hover:text-text-secondary">
             ← Back to Webhook Lab
           </Link>

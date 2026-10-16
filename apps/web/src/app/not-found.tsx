@@ -30,7 +30,7 @@ export default function NotFound() {
         <div className="mt-6">
           <Link
             href="/"
-            className="inline-flex items-center rounded-cta bg-copper px-4 py-2.5 font-sans text-[0.81rem] font-medium text-white transition-all duration-150 hover:bg-copper/90"
+            className="inline-flex items-center rounded-cta bg-copper px-4 py-2.5 font-sans text-[0.81rem] font-medium text-white transition-all duration-150 hover:bg-copper-90"
           >
             Back to Webhook Lab
           </Link>

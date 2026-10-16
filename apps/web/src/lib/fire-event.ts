@@ -1,7 +1,23 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 'use client';
 
-import type { FireResponse } from '@/lib/lab-context';
+import type { FireResponse, SuiteRunResult } from '@/lib/lab-context';
+
+/**
+ * The message from an API error response ({ error: { code, message } }), or
+ * a plain status line when the body is not that shape, such as a platform
+ * timeout page.
+ */
+async function errorMessage(res: Response): Promise<string> {
+  try {
+    const data = (await res.json()) as { error?: { message?: unknown } | string };
+    const msg = typeof data.error === 'string' ? data.error : data.error?.message;
+    if (typeof msg === 'string' && msg !== '') return msg;
+  } catch {
+    // Not JSON; fall through to the status line.
+  }
+  return `Request failed with status ${res.status}`;
+}
 
 /**
  * Generate, sign, and fire an event at a target URL.
@@ -19,11 +35,7 @@ export async function fireEvent(params: {
     body: JSON.stringify(params),
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    const msg = error.error?.message ?? error.error ?? `Request failed with status ${res.status}`;
-    throw new Error(msg);
-  }
+  if (!res.ok) throw new Error(await errorMessage(res));
 
   return res.json();
 }
@@ -44,11 +56,7 @@ export async function firePrepared(params: {
     body: JSON.stringify(params),
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    const msg = error.error?.message ?? error.error ?? `Request failed with status ${res.status}`;
-    throw new Error(msg);
-  }
+  if (!res.ok) throw new Error(await errorMessage(res));
 
   return res.json();
 }
@@ -67,11 +75,7 @@ export async function previewEvent(params: {
     body: JSON.stringify(params),
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    const msg = error.error?.message ?? error.error ?? `Request failed with status ${res.status}`;
-    throw new Error(msg);
-  }
+  if (!res.ok) throw new Error(await errorMessage(res));
 
   return res.json();
 }
@@ -89,12 +93,33 @@ export async function loadScenarioSteps(
     body: JSON.stringify({ scenarioId }),
   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    const msg = error.error?.message ?? error.error ?? `Request failed with status ${res.status}`;
-    throw new Error(msg);
-  }
+  if (!res.ok) throw new Error(await errorMessage(res));
 
   const data = await res.json();
   return data.steps;
+}
+
+/**
+ * Run the conformance suite against a target URL.
+ * Calls the server-side `/api/run-suite` route, which sends up to 10
+ * deliveries one at a time and can take most of a minute for a slow handler.
+ */
+export async function runChecks(params: {
+  targetUrl: string;
+  signingSecret: string;
+}): Promise<SuiteRunResult> {
+  let res: Response;
+  try {
+    res = await fetch('/api/run-suite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    });
+  } catch {
+    throw new Error('Could not reach Webhook Lab. Check your connection and try again.');
+  }
+
+  if (!res.ok) throw new Error(await errorMessage(res));
+
+  return res.json();
 }

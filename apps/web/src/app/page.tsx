@@ -9,16 +9,19 @@ import { CenterPanel } from '@/components/layout/center-panel';
 import { ResponsePanel } from '@/components/layout/response-panel';
 import { SidebarDrawer } from '@/components/sidebar/sidebar-drawer';
 import { SidebarTabs } from '@/components/sidebar/sidebar-tabs';
-import { MobileTabContent } from '@/components/sidebar/mobile-tab-content';
+import { SidebarTabContent } from '@/components/sidebar/sidebar-tab-content';
+import { DrawerSearch } from '@/components/sidebar/drawer-search';
 import { MobileViewTabs } from '@/components/layout/mobile-view-tabs';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { useLabState } from '@/lib/lab-context';
+import { useLabState, useLabDispatch } from '@/lib/lab-context';
 import { cn } from '@/lib/cn';
 
 export default function HomePage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const { mobileView, selectedEventType, selectedScenarioId, mode } = useLabState();
+  const { mobileView, selectedEventType, selectedScenarioId, mode, focusNonce } = useLabState();
+  const dispatch = useLabDispatch();
+  const drawerSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setHasLoaded(true);
@@ -34,7 +37,15 @@ export default function HomePage() {
       return;
     }
     setDrawerOpen(false);
-  }, [selectedEventType, selectedScenarioId, mode]);
+  }, [selectedEventType, selectedScenarioId, mode, focusNonce]);
+
+  // Search below lg: open the drawer on the Events tab with its field focused.
+  // Focus is set in the same tap so mobile browsers raise the keyboard.
+  function openDrawerSearch() {
+    dispatch({ type: 'SET_TAB', tab: 'events' });
+    setDrawerOpen(true);
+    drawerSearchRef.current?.focus({ preventScroll: true });
+  }
 
   return (
     <ErrorBoundary>
@@ -43,7 +54,7 @@ export default function HomePage() {
           the page scroll-shift and hiding the footer behind Safari's bottom bar.
           dvh tracks the visible area, pinning header/footer with no reflow. */}
       <div className="flex h-dvh flex-col">
-        <Header onMenuClick={() => setDrawerOpen(true)} />
+        <Header onMenuClick={() => setDrawerOpen(true)} onMobileSearch={openDrawerSearch} />
 
         {/* Mobile-only Editor | Response segmented control */}
         <MobileViewTabs />
@@ -62,8 +73,9 @@ export default function HomePage() {
 
           {/* Mobile drawer: rendered on < lg */}
           <SidebarDrawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)}>
+            <DrawerSearch inputRef={drawerSearchRef} />
             <SidebarTabs />
-            <MobileTabContent />
+            <SidebarTabContent />
           </SidebarDrawer>
 
           {/* Center + Response (#13 staggered entry).

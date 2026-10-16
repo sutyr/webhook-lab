@@ -1,23 +1,27 @@
 # Webhook Lab
 
-> Webhook Lab is an open-source tool for testing Stripe webhook integrations, by Sutyr Inc. It generates structurally correct Stripe events, signs them with valid HMAC signatures, and fires them at any HTTP endpoint: no Stripe account, no authentication, no signup.
+> Webhook Lab is an open-source test suite for Stripe webhook handlers, by Sutyr Inc. It sends a handler correctly signed, forged, stale, duplicate and out-of-order deliveries and reports how it responds, and it generates 39 schema-accurate Stripe event types at API version 2026-09-30.endive, signed exactly the way Stripe signs them. No Stripe account, no authentication, no signup.
 
-Webhook Lab solves a specific developer pain: testing a Stripe webhook handler normally requires a Stripe account, test mode, and the Stripe CLI, and even then you cannot easily produce a specific decline code, dispute state, or multi-event dunning sequence. Webhook Lab produces schema-faithful events with the exact `Stripe-Signature` HMAC-SHA256 scheme so your handler can be tested against realistic, validly-signed traffic.
+Testing a Stripe webhook handler normally means a Stripe account, test mode and the Stripe CLI, and even then it is hard to produce a forged signature, a stale timestamp, a duplicate delivery, events out of order, a specific decline code or a multi-step dunning sequence on demand. Webhook Lab produces all of these, with the exact Stripe-Signature HMAC-SHA256 scheme, so a handler can be tested against realistic traffic before it meets real traffic.
 
 Key facts:
-- 18 Stripe event types across payments, billing, subscriptions, checkout, customers, and disputes.
-- 5 billing lifecycle scenarios with correlated entity IDs (e.g. failed-payment dunning, dispute lifecycle).
-- Valid HMAC-SHA256 signatures, verified end-to-end against Stripe's official SDK.
-- Export any event as cURL, TypeScript, or Python.
-- Privacy-friendly: cookieless, GDPR-aligned page analytics (no cookies); requests are proxied to your endpoint and processed in memory only, with payloads, signing secrets, and target URLs never stored or logged.
+- 9 conformance checks: accepts a correctly signed event, rejects a forged signature, rejects a missing signature, rejects a body changed after signing, rejects a 10 minute old timestamp, acknowledges a duplicate delivery, acknowledges events out of order, acknowledges an event type it does not handle, and responds in time (pass under 2 seconds, fail over 10, the Lab's own thresholds).
+- Each check is graded pass, fail, warning or error, with what was expected, what was observed and what to fix. The suite judges HTTP status codes and timing only; it cannot see a handler's side effects.
+- CLI: `npx @sutyr/webhook-lab test http://localhost:3000/webhooks --secret "$STRIPE_WEBHOOK_SECRET"`. It runs on the developer's machine, so it reaches localhost and CI services, and exits with 1 when a check fails, which fails a CI job. Other commands: fire, scenario, payload, list.
+- Library: typed factories for every event type, sign() and verify() compatible with Stripe's official libraries, and runSuite() for running the checks from code. Zero runtime dependencies. Node 22 or later.
+- 39 of the 268 event types Stripe lists for API version 2026-09-30.endive, covering payments, invoices, subscriptions, checkout, customers, payment methods, and disputes and fraud. Payloads are snapshot events.
+- 8 scenarios with correlated IDs: subscription happy path, failed payment dunning, checkout flow, dispute lifecycle, refund flow, trial conversion, 3D Secure authentication, early fraud warning.
+- Hosted Lab at lab.sutyr.com: run the suite against a public URL, run scenarios, and fire, replay and export individual events as cURL, TypeScript or Python. Local and private URLs are pointed to the CLI.
+- Privacy: the server processes payloads, signing secrets, target URLs and responses in memory only and never stores or logs them. No cookies; cookieless, GDPR-aligned page analytics on the hosted instance only.
 - Apache 2.0, open source.
 
-Webhook Lab is the open companion to Sutyr, a billing orchestration platform for B2B SaaS on Stripe. The Lab generates and fires events; it does not prescribe how to respond to them (that orchestration is Sutyr's domain).
+Webhook Lab is the open companion to Sutyr, a billing orchestration platform for B2B SaaS on Stripe. The Lab generates events, delivers them and evaluates how an endpoint responds at the HTTP level. It does not decide how a business should react to an event; that orchestration is Sutyr's domain.
 
 ## Pages
 - App: https://lab.sutyr.com
-- Source code: https://github.com/sutyr/webhook-lab
-- Legal & trust: https://lab.sutyr.com/legal
+- Source code and documentation: https://github.com/sutyr/webhook-lab
+- npm package: https://www.npmjs.com/package/@sutyr/webhook-lab
+- Legal and trust: https://lab.sutyr.com/legal
 - Security: https://sutyr.com/security
 
 ## Contact

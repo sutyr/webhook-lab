@@ -1,14 +1,14 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 
-import { EVENT_CATALOG } from '@webhook-lab/events';
+import { SCENARIO_CATALOG } from '@webhook-lab/events';
 import type { StripeEventType } from '@webhook-lab/events';
+import { isEventType } from '@/lib/event-groups';
 
 export interface UrlParsedState {
-  mode?: 'event' | 'scenario';
-  activeTab?: 'events' | 'scenarios';
+  mode: 'suite' | 'event' | 'scenario';
+  activeTab: 'suite' | 'events' | 'scenarios';
   selectedEventType?: StripeEventType;
   selectedScenarioId?: string;
-  drillCategory?: string;
   eventOptions?: Record<string, unknown>;
   targetUrl?: string;
 }
@@ -26,25 +26,29 @@ const PARAM_TO_OPTION: Record<string, string> = {
   apiVersion: 'apiVersion',
 };
 
+function isScenarioId(value: string): boolean {
+  return SCENARIO_CATALOG.some((s) => s.id === value);
+}
+
 /**
  * Parse URL search params into partial state.
  * Called once on page load. URL params override localStorage.
+ * A link with a known event opens it, a known scenario opens that, and
+ * anything else opens the suite.
  */
 export function parseUrlState(searchParams: URLSearchParams): UrlParsedState {
-  const state: UrlParsedState = {};
+  const state: UrlParsedState = { mode: 'suite', activeTab: 'suite' };
   const eventOptions: Record<string, unknown> = {};
 
   const event = searchParams.get('event');
-  if (event && EVENT_CATALOG.some((e) => e.type === event)) {
-    state.selectedEventType = event as StripeEventType;
+  if (event && isEventType(event)) {
+    state.selectedEventType = event;
     state.mode = 'event';
     state.activeTab = 'events';
-    const entry = EVENT_CATALOG.find((e) => e.type === event);
-    if (entry) state.drillCategory = entry.category;
   }
 
   const scenario = searchParams.get('scenario');
-  if (scenario) {
+  if (scenario && isScenarioId(scenario)) {
     state.selectedScenarioId = scenario;
     state.mode = 'scenario';
     state.activeTab = 'scenarios';
@@ -77,7 +81,8 @@ export function parseUrlState(searchParams: URLSearchParams): UrlParsedState {
 /**
  * Serialize relevant state to URL search params.
  * Called via history.replaceState on state changes.
- * Never includes signing secret.
+ * Never includes signing secret. The suite needs no parameter of its own:
+ * a link without event or scenario opens it.
  */
 export function serializeToUrl(state: {
   mode: string;
@@ -90,25 +95,26 @@ export function serializeToUrl(state: {
 
   if (state.mode === 'scenario' && state.selectedScenarioId) {
     params.set('scenario', state.selectedScenarioId);
-  } else if (state.selectedEventType) {
+  } else if (state.mode === 'event' && state.selectedEventType) {
     params.set('event', state.selectedEventType);
-  }
 
-  const opts = state.eventOptions;
-  if (opts.amount !== undefined && opts.amount !== '' && opts.amount !== 2999) {
-    params.set('amount', String(opts.amount));
+    // Options describe the event, so they only travel with an event link.
+    const opts = state.eventOptions;
+    if (opts.amount !== undefined && opts.amount !== '' && opts.amount !== 2999) {
+      params.set('amount', String(opts.amount));
+    }
+    if (opts.currency && opts.currency !== 'usd') {
+      params.set('currency', String(opts.currency));
+    }
+    if (opts.declineCode) params.set('decline', String(opts.declineCode));
+    if (opts.customerId) params.set('customerId', String(opts.customerId));
+    if (opts.chargeId) params.set('chargeId', String(opts.chargeId));
+    if (opts.subscriptionId) params.set('subscriptionId', String(opts.subscriptionId));
+    if (opts.invoiceId) params.set('invoiceId', String(opts.invoiceId));
+    if (opts.paymentIntentId) params.set('paymentIntentId', String(opts.paymentIntentId));
+    if (opts.livemode === true) params.set('livemode', 'true');
+    if (opts.apiVersion) params.set('apiVersion', String(opts.apiVersion));
   }
-  if (opts.currency && opts.currency !== 'usd') {
-    params.set('currency', String(opts.currency));
-  }
-  if (opts.declineCode) params.set('decline', String(opts.declineCode));
-  if (opts.customerId) params.set('customerId', String(opts.customerId));
-  if (opts.chargeId) params.set('chargeId', String(opts.chargeId));
-  if (opts.subscriptionId) params.set('subscriptionId', String(opts.subscriptionId));
-  if (opts.invoiceId) params.set('invoiceId', String(opts.invoiceId));
-  if (opts.paymentIntentId) params.set('paymentIntentId', String(opts.paymentIntentId));
-  if (opts.livemode === true) params.set('livemode', 'true');
-  if (opts.apiVersion) params.set('apiVersion', String(opts.apiVersion));
 
   if (state.targetUrl) params.set('url', state.targetUrl);
 

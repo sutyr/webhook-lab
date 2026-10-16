@@ -2,11 +2,14 @@
 'use client';
 
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Eye, EyeOff, Loader2, Lightbulb, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { useLabState, useLabDispatch } from '@/lib/lab-context';
 import { loadScenarioSteps, firePrepared } from '@/lib/fire-event';
+import { cliScenarioCommand } from '@/lib/cli-command';
 import { cn } from '@/lib/cn';
 import { SCENARIO_CATALOG } from '@webhook-lab/events';
+import { INPUT_CLASSES, TargetFields } from './target-fields';
+import { PrimaryActionButton, useRunShortcut } from './primary-action-button';
 
 // ─── Delay Presets (#5) ──────────────────────────────────────────────────────
 
@@ -64,7 +67,6 @@ export function ScenarioRunner() {
   } = useLabState();
   const dispatch = useLabDispatch();
 
-  const [showSecret, setShowSecret] = useState(false);
   const [delayPreset, setDelayPreset] = useState<DelayPreset>('realistic');
   const cancelledRef = useRef(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -148,8 +150,9 @@ export function ScenarioRunner() {
     cancelledRef.current = true;
   }, []);
 
-  const inputClasses =
-    'bg-surface-input border border-border rounded-input px-3 py-2 font-mono text-[0.81rem] text-text-primary w-full input-copper-focus';
+  useRunShortcut(() => void handleRun());
+
+  const inputClasses = INPUT_CLASSES;
 
   const hasSteps = scenarioSteps.length > 0;
   const stepCount = hasSteps ? scenarioSteps.length : scenario?.stepCount ?? 0;
@@ -196,7 +199,7 @@ export function ScenarioRunner() {
                     key={i}
                     className={cn(
                       'rounded-card bg-surface-input transition-all duration-200',
-                      result.status === 'firing' && 'ring-1 ring-copper/20',
+                      result.status === 'firing' && 'ring-1 ring-copper-20',
                     )}
                     style={{ transitionDelay: `${i * 50}ms` }}
                   >
@@ -212,7 +215,7 @@ export function ScenarioRunner() {
                         className={cn(
                           'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-badge font-mono text-[0.75rem]',
                           result.status === 'firing'
-                            ? 'bg-copper/10 text-text-primary'
+                            ? 'bg-copper-10 text-text-primary'
                             : 'bg-surface-page text-text-secondary',
                         )}
                       >
@@ -306,111 +309,18 @@ export function ScenarioRunner() {
 
       {/* Controls */}
       <div className="space-y-3">
-        <div>
-          <label htmlFor="scenario-target-url" className="mb-1 block font-sans text-[0.75rem] text-text-secondary">
-            Target URL
-          </label>
-          <input
-            id="scenario-target-url"
-            type="url"
-            value={targetUrl}
-            onChange={(e) =>
-              dispatch({ type: 'SET_TARGET_URL', url: e.target.value })
-            }
-            placeholder="https://your-server.com/webhook"
-            autoComplete="off"
-            data-1p-ignore
-            data-lpignore="true"
-            className={inputClasses}
-          />
-          {/* Contextual URL helper */}
-          {!targetUrl && (
-            <div className="mt-1 flex items-center gap-1.5">
-              <Lightbulb size={12} strokeWidth={1.75} className="flex-shrink-0 text-text-muted" />
-              <p className="font-sans text-[0.69rem] leading-[1.3] text-text-muted">
-                No endpoint?{' '}
-                <a
-                  href="https://webhook.site"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-text-tertiary underline hover:text-text-secondary"
-                >
-                  webhook.site
-                </a>
-                {' '}gives you a free temporary URL.
-              </p>
-            </div>
-          )}
-          {targetUrl.includes('webhook.site') && (
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-state-success" />
-              <p className="font-sans text-[0.69rem] leading-[1.3] text-state-success">
-                webhook.site endpoint detected
-              </p>
-            </div>
-          )}
-        </div>
+        <TargetFields
+          idPrefix="scenario"
+          cliCommand={(url) => cliScenarioCommand(selectedScenarioId ?? '', url)}
+        />
 
-        <div>
-          <label htmlFor="scenario-signing-secret" className="mb-1 block font-sans text-[0.75rem] text-text-secondary">
-            Signing secret
-          </label>
-          <div className="relative">
-            <input
-              id="scenario-signing-secret"
-              type={showSecret ? 'text' : 'password'}
-              value={signingSecret}
-              onChange={(e) =>
-                dispatch({ type: 'SET_SIGNING_SECRET', secret: e.target.value })
-              }
-              autoComplete="off"
-              data-1p-ignore
-              data-lpignore="true"
-              className={cn(inputClasses, 'pr-10')}
-            />
-            <button
-              type="button"
-              onClick={() => setShowSecret(!showSecret)}
-              aria-label={showSecret ? 'Hide signing secret' : 'Show signing secret'}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-badge p-2 text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary md:p-1"
-            >
-              {showSecret ? (
-                <EyeOff key="off" className="h-4 w-4 animate-fade-in" />
-              ) : (
-                <Eye key="on" className="h-4 w-4 animate-fade-in" />
-              )}
-            </button>
-          </div>
-          {signingSecret && !signingSecret.startsWith('whsec_') && (
-            <p className="mt-1 rounded-badge bg-state-warning/10 px-2 py-1 font-sans text-[0.69rem] text-state-warning">
-              Stripe signing secrets typically start with whsec_
-            </p>
-          )}
-        </div>
-
-        {/* Run button (#9 loading spinner) */}
-        <button
-          type="button"
-          onClick={handleRun}
-          disabled={isRunning || !targetUrl || !hasSteps}
-          className={cn(
-            'w-full min-h-[44px] rounded-cta py-2.5 font-sans text-[0.81rem] font-medium transition-all duration-150',
-            isRunning
-              ? 'cursor-wait bg-copper/80 text-white'
-              : !targetUrl || !hasSteps
-                ? 'cursor-not-allowed border border-border-medium bg-surface-input text-text-muted'
-                : 'bg-copper text-white hover:bg-copper/90 active:scale-[0.99]',
-          )}
-        >
-          {isRunning ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 size={16} className="animate-spin" />
-              <span>Running...</span>
-            </span>
-          ) : (
-            'Run Scenario'
-          )}
-        </button>
+        <PrimaryActionButton
+          label="Run scenario"
+          busyLabel="Running"
+          busy={isRunning}
+          disabled={!targetUrl || !hasSteps}
+          onRun={() => void handleRun()}
+        />
 
         {isRunning && (
           <button

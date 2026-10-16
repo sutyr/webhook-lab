@@ -1,16 +1,59 @@
 // Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0
 
 import { describe, it, expect } from 'vitest';
+import { EVENT_CATALOG, SCENARIO_CATALOG } from '@webhook-lab/events';
 import { parseUrlState, serializeToUrl } from '@/lib/url-state';
 
 describe('parseUrlState', () => {
-  it('event param sets selectedEventType, mode, activeTab, drillCategory', () => {
+  it('event param sets selectedEventType, mode, activeTab', () => {
     const params = new URLSearchParams('event=invoice.payment_failed');
     const state = parseUrlState(params);
     expect(state.selectedEventType).toBe('invoice.payment_failed');
     expect(state.mode).toBe('event');
     expect(state.activeTab).toBe('events');
-    expect(state.drillCategory).toBe('billing');
+  });
+
+  it('no event or scenario opens the suite', () => {
+    const state = parseUrlState(new URLSearchParams(''));
+    expect(state.mode).toBe('suite');
+    expect(state.activeTab).toBe('suite');
+  });
+
+  it('a url alone opens the suite aimed at it', () => {
+    const state = parseUrlState(new URLSearchParams('url=https://staging.example.com/hook'));
+    expect(state.mode).toBe('suite');
+    expect(state.targetUrl).toBe('https://staging.example.com/hook');
+  });
+
+  it('every catalog event type opens from an event link', () => {
+    expect(EVENT_CATALOG).toHaveLength(39);
+    for (const entry of EVENT_CATALOG) {
+      const state = parseUrlState(new URLSearchParams({ event: entry.type }));
+      expect(state.selectedEventType).toBe(entry.type);
+      expect(state.mode).toBe('event');
+    }
+  });
+
+  it('every catalog scenario opens from a scenario link', () => {
+    for (const scenario of SCENARIO_CATALOG) {
+      const state = parseUrlState(new URLSearchParams({ scenario: scenario.id }));
+      expect(state.selectedScenarioId).toBe(scenario.id);
+      expect(state.mode).toBe('scenario');
+      expect(state.activeTab).toBe('scenarios');
+    }
+  });
+
+  it('an unknown scenario id falls back to the suite', () => {
+    const state = parseUrlState(new URLSearchParams('scenario=not-a-scenario'));
+    expect(state.selectedScenarioId).toBeUndefined();
+    expect(state.mode).toBe('suite');
+  });
+
+  it('scenario wins when a link carries both, as before', () => {
+    const state = parseUrlState(new URLSearchParams('event=invoice.paid&scenario=refund-flow'));
+    expect(state.mode).toBe('scenario');
+    expect(state.selectedScenarioId).toBe('refund-flow');
+    expect(state.selectedEventType).toBe('invoice.paid');
   });
 
   it('scenario param sets selectedScenarioId, mode, activeTab', () => {
@@ -39,9 +82,15 @@ describe('parseUrlState', () => {
     expect(state.eventOptions?.livemode).toBe(false);
   });
 
-  it('unknown event type ignored', () => {
+  it('unknown event type ignored, and the suite opens instead', () => {
     const params = new URLSearchParams('event=totally.fake.event');
     const state = parseUrlState(params);
+    expect(state.selectedEventType).toBeUndefined();
+    expect(state.mode).toBe('suite');
+  });
+
+  it('prototype names are not event types', () => {
+    const state = parseUrlState(new URLSearchParams('event=constructor'));
     expect(state.selectedEventType).toBeUndefined();
   });
 
@@ -128,6 +177,56 @@ describe('serializeToUrl', () => {
   it('empty state returns query string with just event type', () => {
     const qs = serializeToUrl(baseState);
     expect(qs).toBe('?event=payment_intent.succeeded');
+  });
+
+  it('suite mode with no URL serializes to a clean address', () => {
+    expect(serializeToUrl({ ...baseState, mode: 'suite' })).toBe('');
+  });
+
+  it('suite mode keeps only the target URL, never event options', () => {
+    const qs = serializeToUrl({
+      ...baseState,
+      mode: 'suite',
+      eventOptions: { amount: 5000, currency: 'eur' },
+      targetUrl: 'https://example.com/hook',
+    });
+    expect(qs).toBe('?url=https%3A%2F%2Fexample.com%2Fhook');
+  });
+
+  it('scenario mode leaves event options out', () => {
+    const qs = serializeToUrl({
+      ...baseState,
+      mode: 'scenario',
+      selectedScenarioId: 'checkout-flow',
+      eventOptions: { amount: 5000, declineCode: 'insufficient_funds' },
+    });
+    expect(qs).toBe('?scenario=checkout-flow');
+  });
+
+  it('round-trips event links: parse, then serialize, gives the same address', () => {
+    const link = '?event=invoice.payment_failed&amount=4999&currency=eur&decline=insufficient_funds&url=https%3A%2F%2Fexample.com%2Fhook';
+    const parsed = parseUrlState(new URLSearchParams(link));
+    const qs = serializeToUrl({
+      mode: parsed.mode,
+      selectedEventType: parsed.selectedEventType ?? '',
+      selectedScenarioId: parsed.selectedScenarioId ?? null,
+      eventOptions: parsed.eventOptions ?? {},
+      targetUrl: parsed.targetUrl ?? '',
+    });
+    expect(qs).toBe(link);
+  });
+
+  it('round-trips suite links', () => {
+    const link = '?url=https%3A%2F%2Fexample.com%2Fhook';
+    const parsed = parseUrlState(new URLSearchParams(link));
+    const qs = serializeToUrl({
+      mode: parsed.mode,
+      selectedEventType: 'payment_intent.succeeded',
+      selectedScenarioId: null,
+      eventOptions: parsed.eventOptions ?? {},
+      targetUrl: parsed.targetUrl ?? '',
+    });
+    expect(qs).toBe(link);
   });
 
   it('includes target URL', () => {

@@ -5,8 +5,7 @@ import { useState, useEffect } from 'react';
 import { PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import { useLabState } from '@/lib/lab-context';
 import { SidebarTabs } from '@/components/sidebar/sidebar-tabs';
-import { EventCatalog } from '@/components/sidebar/event-catalog';
-import { ScenarioList } from '@/components/sidebar/scenario-list';
+import { SidebarTabContent } from '@/components/sidebar/sidebar-tab-content';
 import { CollapsedSidebar } from '@/components/sidebar/collapsed-sidebar';
 import { CoverageChecklist } from '@/components/sidebar/coverage-checklist';
 import { cn } from '@/lib/cn';
@@ -14,8 +13,9 @@ import { cn } from '@/lib/cn';
 const COLLAPSED_KEY = 'webhook-lab-sidebar-collapsed';
 
 export function Sidebar() {
-  const { activeTab } = useLabState();
+  const { activeTab, searchQuery } = useLabState();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isSearching = searchQuery.trim() !== '';
 
   useEffect(() => {
     try {
@@ -23,6 +23,12 @@ export function Sidebar() {
       if (stored === 'true') setIsCollapsed(true);
     } catch {}
   }, []);
+
+  // Search results live in the sidebar, so a search opens it. The saved
+  // preference is left alone; the toggle still collapses it again.
+  useEffect(() => {
+    if (isSearching) setIsCollapsed(false);
+  }, [isSearching]);
 
   function toggleCollapsed() {
     setIsCollapsed((prev) => {
@@ -36,7 +42,7 @@ export function Sidebar() {
     <aside
       className={cn(
         'flex flex-shrink-0 flex-col overflow-hidden border-r border-border-medium bg-surface-card transition-[width] duration-[260ms] [transition-timing-function:cubic-bezier(0.4,0,0.2,1)]',
-        isCollapsed ? 'w-12' : 'w-[220px]',
+        isCollapsed ? 'w-12' : 'w-[260px]',
       )}
     >
       {isCollapsed ? (
@@ -49,7 +55,7 @@ export function Sidebar() {
           <SidebarTabs />
           <div className="flex-1 overflow-y-auto scroll-shadow">
             <div key={activeTab} className="animate-fade-in">
-              {activeTab === 'events' ? <EventCatalog /> : <ScenarioList />}
+              <SidebarTabContent />
             </div>
           </div>
         </>
