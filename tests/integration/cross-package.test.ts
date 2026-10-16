@@ -3,19 +3,40 @@ import { describe, it, expect } from 'vitest';
 import {
   paymentIntentSucceeded,
   paymentIntentPaymentFailed,
+  paymentIntentRequiresAction,
+  paymentIntentCanceled,
   chargeSucceeded,
+  chargeFailed,
   chargeRefunded,
+  refundCreated,
+  invoiceUpcoming,
   invoiceCreated,
+  invoiceFinalized,
   invoicePaid,
   invoicePaymentFailed,
+  invoicePaymentActionRequired,
   invoicePaymentSucceeded,
+  invoicePaymentPaid,
+  invoiceOverdue,
+  invoiceMarkedUncollectible,
+  invoiceVoided,
   subscriptionCreated,
+  subscriptionTrialWillEnd,
   subscriptionUpdated,
+  subscriptionPaused,
+  subscriptionResumed,
   subscriptionDeleted,
   checkoutSessionCompleted,
+  checkoutSessionAsyncPaymentSucceeded,
+  checkoutSessionAsyncPaymentFailed,
   checkoutSessionExpired,
   customerCreated,
   customerUpdated,
+  customerDeleted,
+  paymentMethodAttached,
+  setupIntentSucceeded,
+  paymentMethodAutomaticallyUpdated,
+  earlyFraudWarningCreated,
   disputeCreated,
   disputeUpdated,
   disputeClosed,
@@ -24,8 +45,13 @@ import {
   checkoutFlow,
   disputeLifecycle,
   refundFlow,
+  trialConversion,
+  threeDSecure,
+  earlyFraudWarning,
   EVENT_CATALOG,
+  EVENT_GENERATORS,
   SCENARIO_CATALOG,
+  SCENARIO_GENERATORS,
   STRIPE_API_VERSION,
   DECLINE_CODE_MAP,
 } from '@webhook-lab/events';
@@ -63,35 +89,71 @@ describe('cross-package: event generation + signing round-trip', () => {
     }
   });
 
-  const allGenerators: [string, () => unknown][] = [
+  const allGenerators: [string, () => { type: string }][] = [
     ['payment_intent.succeeded', paymentIntentSucceeded],
     ['payment_intent.payment_failed', paymentIntentPaymentFailed],
+    ['payment_intent.requires_action', paymentIntentRequiresAction],
+    ['payment_intent.canceled', paymentIntentCanceled],
     ['charge.succeeded', chargeSucceeded],
+    ['charge.failed', chargeFailed],
     ['charge.refunded', chargeRefunded],
+    ['refund.created', refundCreated],
+    ['invoice.upcoming', invoiceUpcoming],
     ['invoice.created', invoiceCreated],
+    ['invoice.finalized', invoiceFinalized],
     ['invoice.paid', invoicePaid],
     ['invoice.payment_failed', invoicePaymentFailed],
+    ['invoice.payment_action_required', invoicePaymentActionRequired],
     ['invoice.payment_succeeded', invoicePaymentSucceeded],
+    ['invoice_payment.paid', invoicePaymentPaid],
+    ['invoice.overdue', invoiceOverdue],
+    ['invoice.marked_uncollectible', invoiceMarkedUncollectible],
+    ['invoice.voided', invoiceVoided],
     ['customer.subscription.created', subscriptionCreated],
+    ['customer.subscription.trial_will_end', subscriptionTrialWillEnd],
     ['customer.subscription.updated', subscriptionUpdated],
+    ['customer.subscription.paused', subscriptionPaused],
+    ['customer.subscription.resumed', subscriptionResumed],
     ['customer.subscription.deleted', subscriptionDeleted],
     ['checkout.session.completed', checkoutSessionCompleted],
+    ['checkout.session.async_payment_succeeded', checkoutSessionAsyncPaymentSucceeded],
+    ['checkout.session.async_payment_failed', checkoutSessionAsyncPaymentFailed],
     ['checkout.session.expired', checkoutSessionExpired],
     ['customer.created', customerCreated],
     ['customer.updated', customerUpdated],
+    ['customer.deleted', customerDeleted],
+    ['payment_method.attached', paymentMethodAttached],
+    ['setup_intent.succeeded', setupIntentSucceeded],
+    ['payment_method.automatically_updated', paymentMethodAutomaticallyUpdated],
+    ['radar.early_fraud_warning.created', earlyFraudWarningCreated],
     ['charge.dispute.created', disputeCreated],
     ['charge.dispute.updated', disputeUpdated],
     ['charge.dispute.closed', disputeClosed],
   ];
 
-  it.each(allGenerators)('sign/verify round-trip for %s', (_eventType, generator) => {
+  it('round-trips every catalogued event type', () => {
+    expect(allGenerators.map(([type]) => type).sort()).toEqual(
+      EVENT_CATALOG.map((e) => e.type).sort(),
+    );
+  });
+
+  it.each(allGenerators)('sign/verify round-trip for %s', (eventType, generator) => {
     const event = generator();
+    expect(event.type).toBe(eventType);
     const secret = 'whsec_roundtrip_test';
     const header = sign(event, secret);
     expect(verify(event, header, secret)).toBe(true);
   });
 
-  it('signs and verifies events from all 5 scenarios', () => {
+  it.each(allGenerators)('rejects a tampered %s and a wrong secret', (_eventType, generator) => {
+    const event = generator();
+    const secret = 'whsec_roundtrip_test';
+    const header = sign(event, secret);
+    expect(verify({ ...event, type: `${event.type}x` }, header, secret)).toBe(false);
+    expect(verify(event, header, 'whsec_some_other_secret')).toBe(false);
+  });
+
+  it('signs and verifies events from all 8 scenarios', () => {
     const secret = 'whsec_all_scenarios';
     const scenarios = [
       subscriptionHappyPath({ seed: 'a' }),
@@ -99,6 +161,9 @@ describe('cross-package: event generation + signing round-trip', () => {
       checkoutFlow({ seed: 'c' }),
       disputeLifecycle({ seed: 'd' }),
       refundFlow({ seed: 'e' }),
+      trialConversion({ seed: 'f' }),
+      threeDSecure({ seed: 'g' }),
+      earlyFraudWarning({ seed: 'h' }),
     ];
 
     for (const scenario of scenarios) {
@@ -111,51 +176,81 @@ describe('cross-package: event generation + signing round-trip', () => {
 });
 
 describe('cross-package: public API surface', () => {
-  it('exports all 18 generator functions', () => {
+  it('exports all 39 generator functions', () => {
     const generators = [
       paymentIntentSucceeded,
       paymentIntentPaymentFailed,
+      paymentIntentRequiresAction,
+      paymentIntentCanceled,
       chargeSucceeded,
+      chargeFailed,
       chargeRefunded,
+      refundCreated,
+      invoiceUpcoming,
       invoiceCreated,
+      invoiceFinalized,
       invoicePaid,
       invoicePaymentFailed,
+      invoicePaymentActionRequired,
       invoicePaymentSucceeded,
+      invoicePaymentPaid,
+      invoiceOverdue,
+      invoiceMarkedUncollectible,
+      invoiceVoided,
       subscriptionCreated,
+      subscriptionTrialWillEnd,
       subscriptionUpdated,
+      subscriptionPaused,
+      subscriptionResumed,
       subscriptionDeleted,
       checkoutSessionCompleted,
+      checkoutSessionAsyncPaymentSucceeded,
+      checkoutSessionAsyncPaymentFailed,
       checkoutSessionExpired,
       customerCreated,
       customerUpdated,
+      customerDeleted,
+      paymentMethodAttached,
+      setupIntentSucceeded,
+      paymentMethodAutomaticallyUpdated,
+      earlyFraudWarningCreated,
       disputeCreated,
       disputeUpdated,
       disputeClosed,
     ];
 
-    expect(generators).toHaveLength(18);
+    expect(generators).toHaveLength(39);
     for (const gen of generators) {
       expect(typeof gen).toBe('function');
     }
+    // The registry holds these same functions (the invoice.upcoming cast is
+    // type-only).
+    expect(new Set(Object.values(EVENT_GENERATORS))).toEqual(new Set(generators));
   });
 
-  it('exports all 5 scenario functions', () => {
+  it('exports all 8 scenario functions', () => {
     const scenarios = [
       subscriptionHappyPath,
       subscriptionFailure,
       checkoutFlow,
       disputeLifecycle,
       refundFlow,
+      trialConversion,
+      threeDSecure,
+      earlyFraudWarning,
     ];
 
-    expect(scenarios).toHaveLength(5);
+    expect(scenarios).toHaveLength(8);
     for (const s of scenarios) {
       expect(typeof s).toBe('function');
     }
+    // The registry holds these same functions, so each one is importable by name.
+    expect(new Set(Object.values(SCENARIO_GENERATORS))).toEqual(new Set(scenarios));
   });
 
-  it('exports EVENT_CATALOG with 18 entries', () => {
-    expect(EVENT_CATALOG).toHaveLength(18);
+  it('exports EVENT_CATALOG with 39 entries', () => {
+    expect(EVENT_CATALOG).toHaveLength(39);
+    expect(new Set(EVENT_CATALOG.map((e) => e.type)).size).toBe(39);
     for (const entry of EVENT_CATALOG) {
       expect(entry).toHaveProperty('type');
       expect(entry).toHaveProperty('category');
@@ -164,8 +259,9 @@ describe('cross-package: public API surface', () => {
     }
   });
 
-  it('exports SCENARIO_CATALOG with 5 entries', () => {
-    expect(SCENARIO_CATALOG).toHaveLength(5);
+  it('exports SCENARIO_CATALOG with 8 entries, one per scenario generator', () => {
+    expect(SCENARIO_CATALOG).toHaveLength(8);
+    expect(SCENARIO_CATALOG.map((s) => s.id).sort()).toEqual(Object.keys(SCENARIO_GENERATORS).sort());
   });
 
   it('exports STRIPE_API_VERSION as a non-empty string', () => {

@@ -6,28 +6,46 @@ export { STRIPE_API_VERSION } from './envelope.js';
 export {
   paymentIntentSucceeded,
   paymentIntentPaymentFailed,
+  paymentIntentRequiresAction,
+  paymentIntentCanceled,
   chargeSucceeded,
+  chargeFailed,
   chargeRefunded,
 } from './payments.js';
 
+export { refundCreated } from './refunds.js';
+
 // ─── Billing ─────────────────────────────────────────────────────────────────
 export {
+  invoiceUpcoming,
   invoiceCreated,
+  invoiceFinalized,
   invoicePaid,
   invoicePaymentFailed,
+  invoicePaymentActionRequired,
   invoicePaymentSucceeded,
+  invoiceOverdue,
+  invoiceMarkedUncollectible,
+  invoiceVoided,
 } from './billing.js';
+
+export { invoicePaymentPaid } from './invoice-payments.js';
 
 // ─── Subscriptions ───────────────────────────────────────────────────────────
 export {
   subscriptionCreated,
+  subscriptionTrialWillEnd,
   subscriptionUpdated,
+  subscriptionPaused,
+  subscriptionResumed,
   subscriptionDeleted,
 } from './subscriptions.js';
 
 // ─── Checkout ────────────────────────────────────────────────────────────────
 export {
   checkoutSessionCompleted,
+  checkoutSessionAsyncPaymentSucceeded,
+  checkoutSessionAsyncPaymentFailed,
   checkoutSessionExpired,
 } from './checkout.js';
 
@@ -35,9 +53,19 @@ export {
 export {
   customerCreated,
   customerUpdated,
+  customerDeleted,
 } from './customers.js';
 
-// ─── Disputes ────────────────────────────────────────────────────────────────
+// ─── Payment Methods ─────────────────────────────────────────────────────────
+export {
+  paymentMethodAttached,
+  paymentMethodAutomaticallyUpdated,
+  setupIntentSucceeded,
+} from './payment-methods.js';
+
+// ─── Disputes and Fraud ──────────────────────────────────────────────────────
+export { earlyFraudWarningCreated } from './radar.js';
+
 export {
   disputeCreated,
   disputeUpdated,

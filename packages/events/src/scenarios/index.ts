@@ -4,3 +4,6 @@ export { subscriptionFailure } from './subscription-failure.js';
 export { checkoutFlow } from './checkout-flow.js';
 export { disputeLifecycle } from './dispute-lifecycle.js';
 export { refundFlow } from './refund-flow.js';
+export { trialConversion } from './trial-conversion.js';
+export { threeDSecure } from './3d-secure.js';
+export { earlyFraudWarning } from './early-fraud-warning.js';

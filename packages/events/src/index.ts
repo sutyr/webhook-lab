@@ -50,25 +50,146 @@ export type {
 
 export { DECLINE_CODE_MAP } from './types/index.js';
 
+export type {
+  StripeInvoiceUncollectibleReason,
+  StripeInvoiceStatusDetails,
+  StripeInvoiceBillingReason,
+  StripeConnectAccountReference,
+  StripeInvoiceAutomaticTax,
+  StripeLifecycleInvoiceLineItem,
+  StripeLifecycleInvoice,
+  StripeUpcomingInvoice,
+  StripeUpcomingInvoiceEvent,
+  StripeInvoicePaymentAssociatedPayment,
+  StripeInvoicePayment,
+  InvoiceUpcomingOptions,
+  InvoiceFinalizedOptions,
+  InvoicePaymentActionRequiredOptions,
+  InvoiceMarkedUncollectibleOptions,
+  InvoiceOverdueOptions,
+  InvoiceVoidedOptions,
+  InvoicePaymentPaidOptions,
+} from './types/invoices.js';
+
+export type {
+  StripeShipping,
+  StripePaymentIntentCancellationReason,
+  StripePaymentIntentNextActionType,
+  StripePaymentIntentNextAction,
+  StripePaymentIntentCardOptions,
+  StripePaymentIntentDetailed,
+  StripeChargeAdviceCode,
+  StripeChargeOutcomeDetailed,
+  StripeChargeCardChecks,
+  StripeChargeCardDetailed,
+  StripeChargeDetailed,
+  StripeRefundReason,
+  StripeRefundPendingReason,
+  StripeRefundCardDestinationDetails,
+  StripeRefundDestinationDetails,
+  StripeRefundDetailed,
+  StripeEarlyFraudWarningFraudType,
+  StripeEarlyFraudWarning,
+  PaymentIntentRequiresActionOptions,
+  PaymentIntentCanceledOptions,
+  ChargeFailedOptions,
+  RefundCreatedOptions,
+  EarlyFraudWarningCreatedOptions,
+} from './types/payments.js';
+
+export type {
+  StripePriceDetailed,
+  StripeSubscriptionItemCurrentTrial,
+  StripeSubscriptionItemDetailed,
+  StripeSubscriptionPauseCollection,
+  StripeSubscriptionTrialSettings,
+  StripeSubscriptionPauseReason,
+  StripeSubscriptionStatusDetails,
+  StripeSubscriptionBillingMode,
+  StripeSubscriptionWithTrialAndPause,
+  SubscriptionTrialWillEndOptions,
+  SubscriptionPausedOptions,
+  SubscriptionResumedOptions,
+  StripeCustomerAddress,
+  StripeCustomerDetailed,
+  CustomerDeletedOptions,
+} from './types/subscriptions.js';
+
+export type {
+  StripeAddress,
+  StripeBillingDetails,
+  StripeCardBrand,
+  StripePaymentMethodCardChecks,
+  StripePaymentMethodCardGeneratedFrom,
+  StripePaymentMethodCardWallet,
+  StripePaymentMethodCard,
+  StripePaymentMethodUsBankAccount,
+  StripeGeneratedPaymentMethodType,
+  StripePaymentMethod,
+  StripePaymentMethodCardPreviousAttributes,
+  StripeSetupIntentPaymentMethodOptions,
+  StripeSetupIntent,
+  CheckoutDelayedPaymentMethodType,
+  StripeCheckoutSessionCustomerDetails,
+  StripeCheckoutSessionAutomaticTax,
+  StripeCheckoutSessionBrandingSettings,
+  StripeCheckoutSessionInvoiceCreation,
+  StripeAsyncPaymentCheckoutSession,
+  CheckoutSessionAsyncPaymentOptions,
+  CheckoutSessionAsyncPaymentSucceededOptions,
+  CheckoutSessionAsyncPaymentFailedOptions,
+  PaymentMethodAttachedOptions,
+  PaymentMethodAutomaticallyUpdatedOptions,
+  SetupIntentSucceededOptions,
+} from './types/payment-methods.js';
+
 // ─── Generators ──────────────────────────────────────────────────────────────
 
 export {
   STRIPE_API_VERSION,
+  // Payments
   paymentIntentSucceeded,
   paymentIntentPaymentFailed,
+  paymentIntentRequiresAction,
+  paymentIntentCanceled,
   chargeSucceeded,
+  chargeFailed,
   chargeRefunded,
+  refundCreated,
+  // Billing
+  invoiceUpcoming,
   invoiceCreated,
+  invoiceFinalized,
   invoicePaid,
   invoicePaymentFailed,
+  invoicePaymentActionRequired,
   invoicePaymentSucceeded,
+  invoicePaymentPaid,
+  invoiceOverdue,
+  invoiceMarkedUncollectible,
+  invoiceVoided,
+  // Subscriptions
   subscriptionCreated,
+  subscriptionTrialWillEnd,
   subscriptionUpdated,
+  subscriptionPaused,
+  subscriptionResumed,
   subscriptionDeleted,
+  // Checkout
   checkoutSessionCompleted,
+  checkoutSessionAsyncPaymentSucceeded,
+  checkoutSessionAsyncPaymentFailed,
   checkoutSessionExpired,
+  // Customers
   customerCreated,
   customerUpdated,
+  customerDeleted,
+  // Payment methods
+  paymentMethodAttached,
+  setupIntentSucceeded,
+  paymentMethodAutomaticallyUpdated,
+  // Disputes and fraud
+  earlyFraudWarningCreated,
   disputeCreated,
   disputeUpdated,
   disputeClosed,
@@ -82,8 +203,12 @@ export {
   checkoutFlow,
   disputeLifecycle,
   refundFlow,
+  trialConversion,
+  threeDSecure,
+  earlyFraudWarning,
 } from './scenarios/index.js';
 
 // ─── Catalog ─────────────────────────────────────────────────────────────────
 
 export { EVENT_CATALOG, SCENARIO_CATALOG } from './catalog.js';
+export { EVENT_GENERATORS, SCENARIO_GENERATORS, type EventGenerator, type ScenarioGenerator } from './registry.js';

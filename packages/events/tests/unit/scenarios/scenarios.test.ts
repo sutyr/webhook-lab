@@ -5,6 +5,12 @@ import { subscriptionFailure } from '../../../src/scenarios/subscription-failure
 import { checkoutFlow } from '../../../src/scenarios/checkout-flow.js';
 import { disputeLifecycle } from '../../../src/scenarios/dispute-lifecycle.js';
 import { refundFlow } from '../../../src/scenarios/refund-flow.js';
+import { trialConversion } from '../../../src/scenarios/trial-conversion.js';
+import { threeDSecure } from '../../../src/scenarios/3d-secure.js';
+import { earlyFraudWarning } from '../../../src/scenarios/early-fraud-warning.js';
+import { SCENARIO_CATALOG } from '../../../src/catalog.js';
+import { SCENARIO_GENERATORS } from '../../../src/registry.js';
+import { STRIPE_API_VERSION } from '../../../src/generators/envelope.js';
 import type { ScenarioPreset } from '../../../src/types/index.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -642,5 +648,483 @@ describe('refundFlow field-level correctness', () => {
 
   it('charge.refunded amount_refunded equals original amount', () => {
     expect(obj(1).amount_refunded).toBe(obj(1).amount);
+  });
+});
+
+// ─── Every Scenario ─────────────────────────────────────────────────────────
+
+type AnyObject = Record<string, unknown>;
+
+/** `data.object` of step `i`, for reading fields without casting each time. */
+function stepObject(preset: ScenarioPreset, i: number): AnyObject {
+  return preset.steps[i]!.event.data.object as unknown as AnyObject;
+}
+
+/** Every data.object ID in step order: the IDs a seed fixes. */
+function objectIds(preset: ScenarioPreset): string[] {
+  return preset.steps.map((step) => step.event.data.object.id);
+}
+
+describe('every scenario', () => {
+  const presets = Object.entries(SCENARIO_GENERATORS).map(([id, generate]) => [id, generate()] as const);
+
+  it('registry and catalog list the same scenarios with the same step counts', () => {
+    expect(Object.keys(SCENARIO_GENERATORS)).toEqual(SCENARIO_CATALOG.map((s) => s.id));
+    for (const entry of SCENARIO_CATALOG) {
+      const preset = SCENARIO_GENERATORS[entry.id]!();
+      expect(preset.id, entry.id).toBe(entry.id);
+      expect(preset.steps, entry.id).toHaveLength(entry.stepCount);
+    }
+  });
+
+  it.each(presets)('%s pins every event to the current API version', (_id, preset) => {
+    for (const step of preset.steps) {
+      expect(step.event.api_version).toBe(STRIPE_API_VERSION);
+      expect(step.event.object).toBe('event');
+    }
+  });
+
+  it.each(presets)('%s never goes back in time from one step to the next', (_id, preset) => {
+    const created = preset.steps.map((s) => s.event.created);
+    for (let i = 1; i < created.length; i++) {
+      expect(created[i]!, `step ${i}`).toBeGreaterThanOrEqual(created[i - 1]!);
+    }
+  });
+
+  it.each(presets)('%s has no event created before the object it carries', (_id, preset) => {
+    for (const step of preset.steps) {
+      const created = (step.event.data.object as unknown as { created: number }).created;
+      expect(created, step.event.type).toBeLessThanOrEqual(step.event.created);
+    }
+  });
+
+  it.each(presets)('%s copy has no em dashes or middle dots', (id, preset) => {
+    const entry = SCENARIO_CATALOG.find((s) => s.id === id)!;
+    const copy = [entry.name, entry.description, preset.description, ...preset.steps.map((s) => s.description)];
+    for (const text of copy) {
+      expect(text).not.toMatch(/[—·]/);
+      expect(text.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ─── Trial Conversion ───────────────────────────────────────────────────────
+
+describe('trialConversion', () => {
+  const preset = trialConversion({ seed: 'trial-test' });
+  const obj = (i: number) => stepObject(preset, i);
+  const SUBSCRIPTION_STEPS = [0, 1, 3];
+  const INVOICE_STEPS = [2, 4, 5];
+
+  it('returns a ScenarioPreset with 7 steps', () => {
+    expect(trialConversion().id).toBe('trial-conversion');
+    expect(preset.steps).toHaveLength(7);
+    expect(preset.name).toBe('Trial Conversion');
+  });
+
+  it('has steps in expected event type order', () => {
+    expect(preset.steps.map((s) => s.event.type)).toEqual([
+      'customer.subscription.created',
+      'customer.subscription.trial_will_end',
+      'invoice.created',
+      'customer.subscription.updated',
+      'invoice.finalized',
+      'invoice.paid',
+      'invoice_payment.paid',
+    ]);
+  });
+
+  it('uses one subscription and one customer across every subscription and invoice step', () => {
+    const subId = obj(0).id as string;
+    const cusId = obj(0).customer as string;
+    expect(subId).toMatch(/^sub_/);
+    expect(cusId).toMatch(/^cus_/);
+    for (const i of SUBSCRIPTION_STEPS) {
+      expect(obj(i).id).toBe(subId);
+      expect(obj(i).customer).toBe(cusId);
+    }
+    for (const i of INVOICE_STEPS) {
+      expect(invoiceSubscription(preset, i)).toBe(subId);
+      expect(obj(i).customer).toBe(cusId);
+    }
+  });
+
+  it('uses one invoice ID across the invoice steps and the invoice payment', () => {
+    const inId = obj(2).id as string;
+    expect(inId).toMatch(/^in_/);
+    for (const i of INVOICE_STEPS) expect(obj(i).id).toBe(inId);
+    expect(obj(6).invoice).toBe(inId);
+    expect(obj(6).id).toMatch(/^inpay_/);
+  });
+
+  it('moves the subscription from trialing to active', () => {
+    expect(obj(0).status).toBe('trialing');
+    expect(obj(1).status).toBe('trialing');
+    expect(obj(3).status).toBe('active');
+    expect(preset.steps[3]!.event.data.previous_attributes).toMatchObject({ status: 'trialing' });
+  });
+
+  it('moves the invoice from draft to open to paid', () => {
+    expect(INVOICE_STEPS.map((i) => obj(i).status)).toEqual(['draft', 'open', 'paid']);
+    expect(obj(6).status).toBe('paid');
+  });
+
+  it('keeps one trial window on every subscription step', () => {
+    const trialStart = obj(0).trial_start as number;
+    const trialEnd = obj(0).trial_end as number;
+    expect(trialEnd - trialStart).toBe(30 * 86400);
+    for (const i of SUBSCRIPTION_STEPS) {
+      expect(obj(i).trial_start).toBe(trialStart);
+      expect(obj(i).trial_end).toBe(trialEnd);
+      expect(obj(i).created).toBe(trialStart);
+      // A trial anchors the billing cycle to its end.
+      expect(obj(i).billing_cycle_anchor).toBe(trialEnd);
+    }
+  });
+
+  it('times each step against the trial end', () => {
+    const trialStart = obj(0).trial_start as number;
+    const trialEnd = obj(0).trial_end as number;
+    const created = preset.steps.map((s) => s.event.created);
+    expect(created[0]).toBe(trialStart);
+    expect(created[1]).toBe(trialEnd - 3 * 86400);
+    expect(created[2]).toBe(trialEnd);
+    expect(created[3]).toBe(trialEnd);
+    // Stripe finalizes the draft about an hour later, then collects payment.
+    expect(created[4]).toBe(trialEnd + 3600);
+    expect(created[5]).toBeGreaterThan(created[4]!);
+    expect(created[6]).toBe(created[5]);
+  });
+
+  it('keeps the same item and price, and starts a new period at the trial end', () => {
+    type Item = { id: string; price: { id: string; product: string }; current_period_start: number; current_period_end: number };
+    const item = (i: number) => (obj(i).items as { data: Item[] }).data[0]!;
+    const trialEnd = obj(0).trial_end as number;
+    for (const i of SUBSCRIPTION_STEPS) {
+      expect(item(i).id).toBe(item(0).id);
+      expect(item(i).price).toEqual(item(0).price);
+    }
+    expect(item(0).current_period_start).toBe(obj(0).trial_start);
+    expect(item(0).current_period_end).toBe(trialEnd);
+    expect(item(3).current_period_start).toBe(trialEnd);
+    expect(item(3).current_period_end).toBe(trialEnd + 30 * 86400);
+  });
+
+  it('reports every changed field in previous_attributes', () => {
+    const previous = preset.steps[3]!.event.data.previous_attributes as unknown as AnyObject;
+    expect(Object.keys(previous).sort()).toEqual(['items', 'latest_invoice', 'status']);
+    expect(previous.latest_invoice).toBe(obj(0).latest_invoice);
+    expect(previous.items).toEqual({ data: (obj(0).items as { data: unknown[] }).data });
+    // Nothing else differs between the trialing and the active subscription.
+    const { status: _s, latest_invoice: _l, items: _i, ...activeRest } = obj(3);
+    const { status: _s0, latest_invoice: _l0, items: _i0, ...trialingRest } = obj(0);
+    expect(activeRest).toEqual(trialingRest);
+  });
+
+  it('points latest_invoice at the trial invoice, then at the first paid invoice', () => {
+    const inId = obj(2).id;
+    expect(obj(0).latest_invoice).toMatch(/^in_/);
+    expect(obj(0).latest_invoice).not.toBe(inId);
+    expect(obj(1).latest_invoice).toBe(obj(0).latest_invoice);
+    expect(obj(3).latest_invoice).toBe(inId);
+  });
+
+  it('has a payment method on file for the whole trial', () => {
+    const pmId = obj(0).default_payment_method;
+    expect(pmId).toMatch(/^pm_/);
+    for (const i of SUBSCRIPTION_STEPS) expect(obj(i).default_payment_method).toBe(pmId);
+  });
+
+  it('carries the same subscription object in created and trial_will_end', () => {
+    expect(obj(1)).toEqual(obj(0));
+  });
+
+  it('only the API request that created the subscription has a request ID', () => {
+    expect(preset.steps[0]!.event.request.id).toMatch(/^req_[A-Za-z0-9]{14}$/);
+    for (const step of preset.steps.slice(1)) expect(step.event.request.id).toBeNull();
+  });
+
+  it('bills the first period after the trial, with the trial as the look-back period', () => {
+    const trialEnd = obj(0).trial_end as number;
+    for (const i of INVOICE_STEPS) {
+      expect(obj(i).billing_reason).toBe('subscription_cycle');
+      expect(obj(i).period_start).toBe(obj(0).trial_start);
+      expect(obj(i).period_end).toBe(trialEnd);
+      const line = (obj(i).lines as { data: Array<{ period: { start: number; end: number } }> }).data[0]!;
+      expect(line.period).toEqual({ start: trialEnd, end: trialEnd + 30 * 86400 });
+    }
+  });
+
+  it('bills the subscription item at its price', () => {
+    type Item = { id: string; price: { id: string; product: string; unit_amount: number } };
+    const item = (obj(3).items as { data: Item[] }).data[0]!;
+    for (const i of INVOICE_STEPS) {
+      const line = (obj(i).lines as { data: AnyObject[] }).data[0]! as {
+        parent: { subscription_item_details: { subscription: string; subscription_item: string } };
+        pricing: { price_details: { price: string; product: string } };
+      };
+      expect(line.parent.subscription_item_details.subscription).toBe(obj(3).id);
+      expect(line.parent.subscription_item_details.subscription_item).toBe(item.id);
+      expect(line.pricing.price_details).toEqual({ price: item.price.id, product: item.price.product });
+      expect(obj(i).amount_due).toBe(item.price.unit_amount);
+    }
+    expect(obj(6).amount_paid).toBe(item.price.unit_amount);
+  });
+
+  it('keeps the fields an invoice fixes at creation and finalization', () => {
+    for (const i of INVOICE_STEPS) {
+      expect(obj(i).created).toBe(obj(2).created);
+      expect(obj(i).lines).toEqual(obj(2).lines);
+    }
+    expect(obj(4).number).toMatch(/^INV-/);
+    for (const field of ['number', 'hosted_invoice_url', 'invoice_pdf', 'effective_at', 'webhooks_delivered_at']) {
+      expect(obj(5)[field], field).toEqual(obj(4)[field]);
+    }
+    const transitions = (i: number) => obj(i).status_transitions as AnyObject;
+    expect(transitions(4).finalized_at).toBe(preset.steps[4]!.event.created);
+    expect(transitions(5).finalized_at).toBe(transitions(4).finalized_at);
+    expect(transitions(5).paid_at).toBe(preset.steps[5]!.event.created);
+  });
+
+  it('dates the default invoice payment from finalization and pays it with the invoice', () => {
+    expect(obj(6).created).toBe((obj(4).status_transitions as AnyObject).finalized_at);
+    expect((obj(6).status_transitions as AnyObject).paid_at).toBe((obj(5).status_transitions as AnyObject).paid_at);
+    expect(obj(6).is_default).toBe(true);
+    expect((obj(6).payment as AnyObject).payment_intent).toMatch(/^pi_/);
+  });
+
+  it('is deterministic: same seed produces identical object IDs', () => {
+    const a = trialConversion({ seed: 'determinism' });
+    const b = trialConversion({ seed: 'determinism' });
+    expect(objectIds(a)).toEqual(objectIds(b));
+    expect(stepObject(a, 0).latest_invoice).toBe(stepObject(b, 0).latest_invoice);
+    expect(a.steps.map((s) => s.event.created)).toEqual(b.steps.map((s) => s.event.created));
+  });
+
+  it('different seeds produce different IDs', () => {
+    expect(objectIds(trialConversion({ seed: 'seed-a' }))).not.toEqual(objectIds(trialConversion({ seed: 'seed-b' })));
+  });
+});
+
+// ─── 3D Secure Authentication ───────────────────────────────────────────────
+
+describe('threeDSecure', () => {
+  const preset = threeDSecure({ seed: '3ds-test' });
+  const obj = (i: number) => stepObject(preset, i);
+  const INVOICE_STEPS = [0, 1, 4];
+
+  it('returns a ScenarioPreset with 6 steps', () => {
+    expect(threeDSecure().id).toBe('3d-secure');
+    expect(preset.steps).toHaveLength(6);
+    expect(preset.name).toBe('3D Secure Authentication');
+  });
+
+  it('has steps in expected event type order', () => {
+    expect(preset.steps.map((s) => s.event.type)).toEqual([
+      'invoice.finalized',
+      'invoice.payment_action_required',
+      'payment_intent.requires_action',
+      'payment_intent.succeeded',
+      'invoice.paid',
+      'invoice_payment.paid',
+    ]);
+  });
+
+  it('uses one invoice, subscription and customer across the invoice steps', () => {
+    const inId = obj(0).id as string;
+    const subId = invoiceSubscription(preset, 0);
+    expect(inId).toMatch(/^in_/);
+    expect(subId).toMatch(/^sub_/);
+    for (const i of INVOICE_STEPS) {
+      expect(obj(i).id).toBe(inId);
+      expect(invoiceSubscription(preset, i)).toBe(subId);
+      expect(obj(i).customer).toBe(obj(0).customer);
+    }
+    expect(obj(5).invoice).toBe(inId);
+  });
+
+  it('uses one PaymentIntent for the attempt, the success and the invoice payment', () => {
+    const piId = obj(2).id as string;
+    expect(piId).toMatch(/^pi_/);
+    expect(obj(3).id).toBe(piId);
+    expect((obj(5).payment as AnyObject).payment_intent).toBe(piId);
+    expect(obj(2).customer).toBe(obj(0).customer);
+  });
+
+  it('keeps the invoice open until the authenticated payment pays it', () => {
+    expect(INVOICE_STEPS.map((i) => obj(i).status)).toEqual(['open', 'open', 'paid']);
+    expect(INVOICE_STEPS.map((i) => obj(i).attempted)).toEqual([false, true, true]);
+    // Confirming after authentication is not an automatic retry.
+    expect(INVOICE_STEPS.map((i) => obj(i).attempt_count)).toEqual([0, 1, 1]);
+    expect(INVOICE_STEPS.map((i) => obj(i).auto_advance)).toEqual([true, true, false]);
+    expect(obj(4).amount_remaining).toBe(0);
+    expect(obj(5).status).toBe('paid');
+  });
+
+  it('is a renewal invoice in every invoice step', () => {
+    for (const i of INVOICE_STEPS) expect(obj(i).billing_reason).toBe('subscription_cycle');
+  });
+
+  it('moves the PaymentIntent from requires_action to succeeded', () => {
+    expect(obj(2).status).toBe('requires_action');
+    expect(obj(2).next_action).not.toBeNull();
+    expect(obj(2).latest_charge).toBeNull();
+    expect(obj(2).amount_received).toBe(0);
+    expect(obj(3).status).toBe('succeeded');
+    expect(obj(3).next_action).toBeNull();
+    expect(obj(3).latest_charge).toMatch(/^ch_/);
+    expect(obj(3).amount_received).toBe(obj(3).amount);
+  });
+
+  it('changes only the PaymentIntent fields that authentication changes', () => {
+    const changed = ['status', 'amount_received', 'latest_charge', 'next_action'];
+    const rest = (o: AnyObject) => Object.fromEntries(Object.entries(o).filter(([k]) => !changed.includes(k)));
+    expect(rest(obj(3))).toEqual(rest(obj(2)));
+    expect(obj(3).client_secret).toBe(obj(2).client_secret);
+  });
+
+  it('asks for the same amount everywhere', () => {
+    const amount = obj(0).amount_due;
+    expect(obj(2).amount).toBe(amount);
+    expect(obj(3).amount).toBe(amount);
+    expect(obj(4).amount_paid).toBe(amount);
+    expect(obj(5).amount_paid).toBe(amount);
+  });
+
+  it('dates the default PaymentIntent and invoice payment from finalization', () => {
+    const finalizedAt = (obj(0).status_transitions as AnyObject).finalized_at;
+    expect(finalizedAt).toBe(preset.steps[0]!.event.created);
+    expect(obj(2).created).toBe(finalizedAt);
+    expect(obj(3).created).toBe(finalizedAt);
+    expect(obj(5).created).toBe(finalizedAt);
+  });
+
+  it('keeps the fields an invoice fixes at creation and finalization', () => {
+    for (const i of INVOICE_STEPS) {
+      for (const field of ['created', 'period_start', 'period_end', 'lines', 'number', 'hosted_invoice_url', 'invoice_pdf', 'effective_at', 'webhooks_delivered_at']) {
+        expect(obj(i)[field], `step ${i} ${field}`).toEqual(obj(0)[field]);
+      }
+      expect((obj(i).status_transitions as AnyObject).finalized_at).toBe((obj(0).status_transitions as AnyObject).finalized_at);
+    }
+    // The renewal draft was held for an hour before finalization.
+    expect(preset.steps[0]!.event.created - (obj(0).created as number)).toBe(3600);
+    expect((obj(4).status_transitions as AnyObject).paid_at).toBe(preset.steps[4]!.event.created);
+  });
+
+  it('attempts payment right after finalization and succeeds after the customer authenticates', () => {
+    const created = preset.steps.map((s) => s.event.created);
+    expect(created[1]! - created[0]!).toBeLessThanOrEqual(5);
+    expect(created[2]).toBe(created[1]);
+    expect(created[3]! - created[2]!).toBeGreaterThanOrEqual(3600);
+    expect(created[4]).toBeGreaterThan(created[3]!);
+  });
+
+  it('is deterministic: same seed produces identical object IDs', () => {
+    const a = threeDSecure({ seed: 'determinism' });
+    const b = threeDSecure({ seed: 'determinism' });
+    expect(objectIds(a)).toEqual(objectIds(b));
+    expect(stepObject(a, 3).latest_charge).toBe(stepObject(b, 3).latest_charge);
+  });
+
+  it('different seeds produce different IDs', () => {
+    expect(objectIds(threeDSecure({ seed: 'seed-a' }))).not.toEqual(objectIds(threeDSecure({ seed: 'seed-b' })));
+  });
+});
+
+// ─── Early Fraud Warning ────────────────────────────────────────────────────
+
+describe('earlyFraudWarning', () => {
+  const preset = earlyFraudWarning({ seed: 'efw-test' });
+  const obj = (i: number) => stepObject(preset, i);
+
+  it('returns a ScenarioPreset with 4 steps', () => {
+    expect(earlyFraudWarning().id).toBe('early-fraud-warning');
+    expect(preset.steps).toHaveLength(4);
+    expect(preset.name).toBe('Early Fraud Warning');
+  });
+
+  it('has steps in expected event type order', () => {
+    expect(preset.steps.map((s) => s.event.type)).toEqual([
+      'charge.succeeded',
+      'radar.early_fraud_warning.created',
+      'refund.created',
+      'charge.refunded',
+    ]);
+  });
+
+  it('points the warning and the refund at the charge and its PaymentIntent', () => {
+    const chId = obj(0).id as string;
+    const piId = obj(0).payment_intent as string;
+    expect(chId).toMatch(/^ch_/);
+    expect(piId).toMatch(/^pi_/);
+    expect(obj(1).charge).toBe(chId);
+    expect(obj(1).payment_intent).toBe(piId);
+    expect(obj(2).charge).toBe(chId);
+    expect(obj(2).payment_intent).toBe(piId);
+    expect(obj(3).id).toBe(chId);
+    expect(obj(3).payment_intent).toBe(piId);
+  });
+
+  it('refunds the customer and payment method that paid', () => {
+    expect(obj(0).customer).toMatch(/^cus_/);
+    expect(obj(0).payment_method).toMatch(/^pm_/);
+    expect(obj(2).customer).toBe(obj(0).customer);
+    expect(obj(2).payment_method).toBe(obj(0).payment_method);
+    expect(obj(3).customer).toBe(obj(0).customer);
+  });
+
+  it('raises an actionable warning on a charge that is neither disputed nor refunded', () => {
+    expect(obj(1).id).toMatch(/^issfr_/);
+    expect(obj(1).actionable).toBe(true);
+    expect(obj(0).disputed).toBe(false);
+    expect(obj(0).amount_refunded).toBe(0);
+  });
+
+  it('refunds the full amount as fraudulent', () => {
+    expect(obj(2).id).toMatch(/^re_/);
+    expect(obj(2).reason).toBe('fraudulent');
+    expect(obj(2).status).toBe('succeeded');
+    expect(obj(2).amount).toBe(obj(0).amount);
+    expect(obj(2).currency).toBe(obj(0).currency);
+  });
+
+  it('leaves the charge fully refunded and not disputed', () => {
+    expect(obj(3).refunded).toBe(true);
+    expect(obj(3).amount_refunded).toBe(obj(0).amount);
+    expect(obj(3).disputed).toBe(false);
+    expect(obj(3).status).toBe('succeeded');
+  });
+
+  it('changes only the refund fields on the charge', () => {
+    const { amount_refunded: _a, refunded: _r, ...refundedRest } = obj(3);
+    const { amount_refunded: _a0, refunded: _r0, ...chargedRest } = obj(0);
+    expect(refundedRest).toEqual(chargedRest);
+  });
+
+  it('sends refund.created and charge.refunded from one API request', () => {
+    const requestId = preset.steps[2]!.event.request.id;
+    expect(requestId).toMatch(/^req_[A-Za-z0-9]{14}$/);
+    expect(preset.steps[3]!.event.request.id).toBe(requestId);
+    expect(preset.steps[0]!.event.request.id).toBeNull();
+    expect(preset.steps[1]!.event.request.id).toBeNull();
+  });
+
+  it('warns days after the charge and refunds after the warning', () => {
+    const created = preset.steps.map((s) => s.event.created);
+    expect(created[1]! - created[0]!).toBeGreaterThanOrEqual(86400);
+    expect(created[2]).toBeGreaterThan(created[1]!);
+    expect(created[3]).toBeGreaterThanOrEqual(created[2]!);
+  });
+
+  it('is deterministic: same seed produces identical object IDs', () => {
+    const a = earlyFraudWarning({ seed: 'determinism' });
+    const b = earlyFraudWarning({ seed: 'determinism' });
+    expect(objectIds(a)).toEqual(objectIds(b));
+    expect(stepObject(a, 0).payment_method).toBe(stepObject(b, 0).payment_method);
+    expect(a.steps[2]!.event.request.id).toBe(b.steps[2]!.event.request.id);
+  });
+
+  it('different seeds produce different IDs', () => {
+    expect(objectIds(earlyFraudWarning({ seed: 'seed-a' }))).not.toEqual(objectIds(earlyFraudWarning({ seed: 'seed-b' })));
   });
 });
