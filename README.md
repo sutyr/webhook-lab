@@ -4,10 +4,12 @@ A test suite for your Stripe webhook handler.
 
 Webhook Lab sends your handler the requests a Stripe endpoint has to cope with: a correctly signed event, a forged signature, a missing signature, a body changed after signing, a stale timestamp, a duplicate delivery, events out of order and an event type you do not handle. It reports the status code and timing of each response and tells you what to fix. It also generates 39 Stripe event types at API version `2026-09-30.endive`, signed exactly the way Stripe signs them, for your own tests. No Stripe account, no signup.
 
-[![Tests](https://img.shields.io/badge/tests-1758-brightgreen)](https://github.com/sutyr/webhook-lab)
+[![Tests](https://img.shields.io/badge/tests-1770-brightgreen)](https://github.com/sutyr/webhook-lab)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 [![Dependencies](https://img.shields.io/badge/runtime%20deps-0-brightgreen)](package.json)
+
+[![Webhook Lab suite mode: a run against an endpoint that accepts forged, missing, tampered and stale signatures, 5 of 9 checks passed](https://raw.githubusercontent.com/sutyr/webhook-lab/main/docs/screenshot.png)](https://lab.sutyr.com)
 
 ## Quick start
 
@@ -233,7 +235,7 @@ Every generator is checked against Stripe's OpenAPI specification for `2026-09-3
 
 One example of the detail involved: `payment_intent.payment_failed` with `insufficient_funds` produces `code: 'card_declined'` and `decline_code: 'insufficient_funds'` on `last_payment_error`. With `expired_card` the code is `expired_card` and `decline_code` is absent, not null. A Charge has no `decline_code` at all; `charge.failed` reports `failure_code` and `outcome`.
 
-The test suite has 1758 tests:
+The test suite has 1770 tests:
 
 - **744 event tests**: every generator's fields, types, enums and ID prefixes, option handling, and ID continuity across scenario steps
 - **273 schema validation tests**: structural contracts for every event type
@@ -242,7 +244,7 @@ The test suite has 1758 tests:
 - **35 CLI tests**: every command against a local HTTP server
 - **40 signature tests**: Stripe's documented test vectors, tolerance boundaries, malformed headers, secret rotation
 - **46 conformance tests**: every check's verdicts, transport timeouts and body caps
-- **516 web tests**: API routes, SSRF protection, rate limiting, input validation, URL state and export formats
+- **528 web tests**: API routes, SSRF protection and connection pinning, rate limiting, input validation, URL state and export formats
 
 Found a payload that does not match what Stripe sends? Schema accuracy bugs are treated as P0. Open an issue with the event type, the field and evidence from Stripe's documentation or a real event.
 
