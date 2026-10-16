@@ -13,6 +13,11 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Wait a week before proposing a newly published version, so a hijacked
+    # release is usually caught and pulled first. Security updates still
+    # arrive immediately.
+    cooldown:
+      default-days: 7
     # Batch low-risk dev-dependency bumps into one PR to cut noise; runtime
     # deps stay individual so each is reviewed on its own.
     groups:
@@ -33,5 +38,10 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    # Wait a week before proposing a newly published version, so a hijacked
+    # release is usually caught and pulled first. Security updates still
+    # arrive immediately.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: chore
