@@ -8,7 +8,11 @@ All contributions require a signed Contributor License Agreement (CLA). When you
 
 ## What We Accept
 
-**Event generators.** New Stripe event types, improved payload accuracy, better field defaults. If Stripe documents an event type and we don't generate it yet, that's a welcome contribution.
+**Event generators.** New Stripe event types, improved payload accuracy, better field defaults. If Stripe documents an event type and we don't generate it yet, that's a welcome contribution. Generators target the API version in `STRIPE_API_VERSION` (`packages/events/src/generators/envelope.ts`).
+
+**Conformance checks.** New checks in `packages/conformance` that test how a webhook endpoint responds at the HTTP level, where Stripe documents the expected behaviour (signature verification, retries, ordering, duplicates, response time). Each check states what it sends, what it expects and what a pass does not prove, and cites the Stripe documentation it relies on. When a threshold is the Lab's own recommendation rather than a Stripe number, the check says so.
+
+**CLI improvements.** Better output, options and error messages for the `webhook-lab` command in `src/cli.ts`. The CLI uses only Node built-ins.
 
 **Scenario presets.** Multi-event sequences that demonstrate real billing flows. The more realistic the sequence, the better.
 
@@ -22,7 +26,7 @@ This header defines the boundary between the open-source project (which document
 
 **Bug fixes.** Anything that makes the tool more accurate or reliable.
 
-**Signing and verification improvements.** Better Stripe-Signature compatibility, additional verification utilities.
+**Signing and verification improvements.** Better Stripe-Signature compatibility, additional verification utilities. Signing must keep matching Stripe's official libraries byte for byte.
 
 **Documentation.** README improvements, inline code documentation, usage examples.
 
@@ -32,7 +36,7 @@ This header defines the boundary between the open-source project (which document
 
 **Authentication or account systems.** The tool is designed to work without authentication. Contributions that add login, signup, or account features will be rejected.
 
-**Classification logic.** Contributions that add response classification (categorizing edge cases into response types such as "retry," "escalate," or "terminal"), retry timing logic, or orchestration behavior are outside the scope of this project. This project generates and documents billing events; it does not prescribe responses to them.
+**Classification logic.** Contributions that add response classification (categorizing edge cases into response types such as "retry," "escalate," or "terminal"), retry timing logic, or orchestration behavior are outside the scope of this project. This project generates billing events, delivers them, and evaluates how the endpoint under test responds at the HTTP level (status codes and timing) against Stripe's documented delivery rules. It does not prescribe how a business should react to an event, and it does not inspect a handler's side effects.
 
 **Dependencies that phone home.** Any dependency that transmits data to an external service without explicit user action will be rejected.
 
@@ -40,7 +44,7 @@ This header defines the boundary between the open-source project (which document
 
 1. **Fork the repository** and create a branch from `main`.
 
-2. **Make your changes.** Follow the coding standards below. Event generators should produce structurally correct Stripe payloads: validate against Stripe's documentation.
+2. **Make your changes.** Follow the coding standards below. Event generators should produce structurally correct Stripe payloads: validate fields, nullability, enums and ID prefixes against Stripe's OpenAPI specification for the API version the Lab targets, and against the API reference at docs.stripe.com.
 
 3. **Write tests.** New event generators and scenario presets should include tests that verify payload structure. Signing changes should include verification tests.
 
@@ -60,7 +64,7 @@ This header defines the boundary between the open-source project (which document
 
 - **TypeScript strict mode**: no `any` types, no type assertions without justification.
 - **SPDX headers**: every new `.ts` or `.tsx` file must start with `// Copyright 2026 Sutyr Inc. SPDX-License-Identifier: Apache-2.0`
-- **Zero runtime dependencies**: the `events` and `signatures` packages must remain dependency-free. Node `crypto` is the only permitted import.
+- **Zero runtime dependencies**: the `events`, `signatures` and `conformance` packages and the CLI use Node built-ins only. `conformance` may depend on the two workspace packages, and nothing else.
 - **Pure functions**: all event generator functions accept a plain options object and return a plain object. No side effects, no external calls, no framework-specific types.
 - **Lucide icons only**: no emoji in UI. Named imports only, never `import *`.
 - **Use existing utilities**: ID generation via `packages/events/src/utils/ids.ts`, timestamps via `packages/events/src/utils/timestamps.ts`.
@@ -71,6 +75,8 @@ New event generators must include:
 - **Schema structure test**: required fields present, correct types, correct ID prefixes.
 - **Enum validation test**: status values, decline codes, and other enums match Stripe's documented values.
 - **Integration test** if part of a scenario: entity ID correlation across events in the sequence.
+
+New conformance checks must include unit tests in `packages/conformance/tests` for every verdict the check can return (pass, fail, warning, error). CLI changes need a test in `tests/integration/cli.test.ts`, which runs the command against a local HTTP server.
 
 Schema accuracy bugs (our payload doesn't match Stripe's actual behavior) are treated as P0. When reporting schema bugs, include the event type, the field that's incorrect, and evidence from Stripe's documentation or a real Stripe event.
 

@@ -6,10 +6,12 @@ This directory documents billing edge cases that developers encounter when integ
 
 These documents are educational resources. They describe problems, not solutions. The Sutyr platform's response logic for these edge cases is proprietary and is not part of this open-source project.
 
+Delivery problems that apply to every event type (forged or stale signatures, duplicate deliveries, events out of order, slow responses) are covered by the conformance suite rather than by a document here. Run `npx @sutyr/webhook-lab test <url>` against your handler, or see [what the checks prove](../../README.md#what-the-checks-prove).
+
 ## Categories
 
 - [Decline Codes](decline-codes.md)
 - [Subscription Lifecycle](subscription-lifecycle.md)
 - [Checkout Failures](checkout-failures.md)
 
-Additional categories are added over time. Contributions welcome — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
+Additional categories are added over time. Contributions are welcome; see [CONTRIBUTING.md](../../CONTRIBUTING.md).
