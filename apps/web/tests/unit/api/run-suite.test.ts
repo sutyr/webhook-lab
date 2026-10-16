@@ -14,6 +14,16 @@ vi.mock('node:dns/promises', () => ({
   lookup: vi.fn(async () => [{ address: '93.184.216.34', family: 4 }]),
 }));
 
+// The route's network fakes are fetch-based. Pinning itself is covered in
+// tests/unit/lib/pinned-transport.test.ts, so here it delegates to fetch.
+vi.mock('@/lib/pinned-transport', async () => {
+  const { fetchTransport } = await import('@webhook-lab/conformance');
+  return {
+    pinnedTransport: (o: { timeoutMs: number; maxBodyBytes: number }) =>
+      fetchTransport({ timeoutMs: o.timeoutMs, maxBodyBytes: o.maxBodyBytes }),
+  };
+});
+
 const originalFetch = global.fetch;
 const SECRET = 'whsec_run_suite_test_secret';
 const TARGET = 'https://example.com/webhooks/stripe';

@@ -5,11 +5,11 @@ import { randomUUID } from 'node:crypto';
 import {
   DEFAULT_MAX_BODY_BYTES,
   DEFAULT_TIMEOUT_MS,
-  fetchTransport,
   type Transport,
   type TransportResponse,
 } from '@webhook-lab/conformance';
 import { resolveAndValidateTarget } from './outbound';
+import { pinnedTransport } from './pinned-transport';
 
 /**
  * How long one hosted delivery waits for the handler. Same as the CLI default,
@@ -48,12 +48,13 @@ export interface SuiteTransportOptions {
 }
 
 /**
- * The Transport the hosted suite runs on. Every delivery goes through the same
- * outbound path as /api/fire: the kill switch, full SSRF validation of the
- * resolved host (repeated per delivery, so a DNS record that flips to a
- * private address mid-run is caught), no redirects, a capped streaming read,
- * and an X-Webhook-Lab-Request-Id header. A refused delivery comes back as a
- * response with status 0 and an error, which the suite reports as 'error'.
+ * The Transport the hosted suite runs on. Every delivery gets the kill switch,
+ * the same SSRF validation as /api/fire (for its error codes and CLI hint),
+ * then a connection pinned to the address validated at connect time by
+ * pinnedTransport, so a DNS record that flips to a private address between
+ * the check and the connection is refused (DNS rebinding). No redirects, a
+ * capped read, and an X-Webhook-Lab-Request-Id header. A refused delivery
+ * comes back as status 0 with an error, which the suite reports as 'error'.
  */
 export function suiteTransport(options: SuiteTransportOptions): Transport {
   const timeoutMs = options.timeoutMs ?? SUITE_DELIVERY_TIMEOUT_MS;
@@ -84,7 +85,11 @@ export function suiteTransport(options: SuiteTransportOptions): Transport {
       headers['X-Webhook-Lab-Request-Id'] = randomUUID();
     }
 
-    const res = await fetchTransport({ timeoutMs: window, maxBodyBytes })({ ...req, headers });
+    const res = await pinnedTransport({
+      allowPrivate: options.allowPrivate,
+      timeoutMs: window,
+      maxBodyBytes,
+    })({ ...req, headers });
 
     // Waiting was cut by the run's limit, not the per-delivery timeout, so the
     // handler was not given its full time. Report no answer rather than a
