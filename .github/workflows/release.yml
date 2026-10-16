@@ -68,6 +68,15 @@ jobs:
       - name: Package smoke test
         run: pnpm smoke:pkg
 
-      # Everything prepublishOnly would run has just run, so skip it.
+      # Everything prepublishOnly would run has just run, so skip it. A version
+      # already on npm (the first one is published by hand) is left alone, so
+      # re-running a release is safe.
       - name: Publish
-        run: npm publish --provenance --ignore-scripts
+        run: |
+          name="$(node -p "require('./package.json').name")"
+          version="$(node -p "require('./package.json').version")"
+          if npm view "${name}@${version}" version >/dev/null 2>&1; then
+            echo "${name}@${version} is already on npm; nothing to publish."
+            exit 0
+          fi
+          npm publish --provenance --ignore-scripts

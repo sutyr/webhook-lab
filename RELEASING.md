@@ -17,7 +17,7 @@ npm trusted publishing is configured from a package's settings page, so the firs
    ```
    `prepublishOnly` runs the full gate (about two minutes), then npm asks for your 2FA code. `publishConfig.access` is already `public`.
 3. Check it: `npx @sutyr/webhook-lab@latest --version` prints the version, and https://www.npmjs.com/package/@sutyr/webhook-lab shows the README.
-4. Tag the release: `git tag v0.2.0 && git push origin v0.2.0`. The Release workflow fails this one run on purpose (the version is already published, and no trusted publisher exists yet); the tag marks the commit.
+4. Tag the release: `git tag v0.2.0 && git push origin v0.2.0`. The Release workflow runs the gate and skips publishing, because 0.2.0 is already on npm; the tag marks the commit.
 
 ## Turn on trusted publishing (one time, after the first publish)
 
